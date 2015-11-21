@@ -13,20 +13,10 @@ class GenomeError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class Object:
+class GenomeObject:
     """
-    Base class defining JSON serialization methods.
+    Base class defining serialization methods.
     """
-
-    def to_JSON(self, fileName):
-        with open(fileName, 'w') as f:
-            json.dump(self, f, default=lambda o: o.__dict__,
-                      sort_keys=True, indent=4)
-
-    @classmethod
-    def from_JSON(cls, fileName):
-        with open(fileName, 'w') as f:
-            return type(cls.__name__, (Object,), json.load(f))
 
     def __repr__(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
@@ -34,9 +24,30 @@ class Object:
     def __str__(self):
         return repr(self)
 
+#JUSTATEMP
+huhu=0
+class GenomeJSONEncoder(json.JSONEncoder):
+    """
+    Converts a python object, where the object is derived from GenomeObject,
+    into an object that can be decoded using the GenomeJSONDecoder.
+    """
+    def default(self, obj):
+        if isinstance(obj, GenomeObject):
+            #JUSTATEMP
+            global huhu
+            huhu += 1
+            print("%d OBJ %s" % (huhu, obj))
+            #JUSTATEMP END
+            d = obj.__dict__
+            d["__genomeobjecttype__"] = str(obj.__class__)
+            return d
+        else:
+            return json.JSONEncoder.default(self, obj)
 
 
-class ProkDna(Object):
+
+
+class ProkDna(GenomeObject):
     """
     Prokaryote DNA Molucule.
     Attributes:
@@ -170,7 +181,7 @@ class ProkDna(Object):
         return self.isClone
 
 
-class ProkDnaSet(Object):
+class ProkDnaSet(GenomeObject):
     """
     Collection of ProkDna objects, indexed by chromosome id (0 based)
     Attributes:
@@ -208,7 +219,7 @@ class ProkDnaSet(Object):
         return self.dict.keys()
 
 
-class ProkGenome(Object):
+class ProkGenome(GenomeObject):
     """
     Describes full organism's genome
     Attributes:

@@ -3,7 +3,7 @@
 
 import os
 import glob
-import utils
+import config
 import csv
 import json
 
@@ -19,7 +19,7 @@ errorCount = 0
 
 
 
-dirList = glob.glob(utils.ORGANISMS() + "/*")
+dirList = glob.glob(config.ORGANISMS() + "/*")
 dirDict = {}
 termDict = {}
 for d in dirList:
@@ -33,7 +33,7 @@ for d in dirList:
 		termDict[t] = dirValList
 
 
-with open(utils.TAXONOMY(), 'r') as f:
+with open(config.TAXONOMY(), 'r') as f:
 	csvr = csv.reader(f, delimiter = ',')
 	for l in csvr:
 		if len(l) != 7:
@@ -74,8 +74,8 @@ with open(utils.TAXONOMY(), 'r') as f:
 					"order": l[5],
 					"family": l[6]
 				}
-				with open(utils.ORGANISMS() + "/" + dir + "/" +
-						utils.TAXONOMY_JSON_FILE(), 'w') as fjson:
+				with open(config.ORGANISMS() + "/" + dir + "/" +
+						config.TAXONOMY_JSON_FILE(), 'w') as fjson:
 					json.dump(taxonomy, fjson)
 				writtenTaxonomies[dir] = (name, len(sname))
 				matched = True
