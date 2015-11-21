@@ -15,6 +15,7 @@ def newProkGenome(dir):
 	for pttFileName in pttFiles:
 		prokDna = ProkDna(pttFileName)
 		prokGenome.add(prokDna)
+	prokGenome.verify()
 	return prokGenome
 
 with open(utils.PROKARYOT_DIRS_FILE(), 'r') as fdirs:

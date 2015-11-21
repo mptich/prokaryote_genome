@@ -48,6 +48,7 @@ class ProkDna(Object):
         plasmids)
     phage: name of the phage (None if not phage)
     plasmid: name of the plasmid (None if not plasmid)
+    isClone - bool, indicating if this is some kind of clone
     """
 
     # Legitimate chromosome representation (might have no name)
@@ -58,10 +59,14 @@ class ProkDna(Object):
     patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s]+))?)(.*)')
 
     # Strain representation (must have name)
-    patStrain = re.compile(r'(.*)(\bstr[\.|ain]\b\s+([^\s]+ ))(.*)')
+    patStrain1 = re.compile(r'(.*)(\bstr\b\.\s+([^\s]+))(.*)')
+    patStrain2 = re.compile(r'(.*)(\bstrain\b\s+([^\s]+))(.*)')
 
     # Plasmid and megaplasmid patterns (might have no name)
     patPlasmid = re.compile(r'(.*)(\b(?:mega)?plasmid\b(?:\s+([^\s]+))?)(.*)')
+
+    # Clone match
+    patClone = re.compile(r'.*\bclone\b.*')
 
     patWhiteSpace = re.compile(r'\s+')
     patQuotedText = re.compile(r'([\'\"](.*?)[\'\"])')
@@ -113,18 +118,32 @@ class ProkDna(Object):
 
         self.chr = None
         self.strain = None
+        self.isClone = False
+        self.phage = None
+        self.plasmid = None
+
+        if ProkDna.patClone.match(self.name):
+            self.isClone = True
+            return
 
         self.name = self.processPattern(self.name, ProkDna.patPhage,
                                         "phage", None)
         self.name = self.processPattern(self.name, ProkDna.patPlasmid,
                                         "plasmid", None)
+        if self.plasmid or self.phage:
+            return
 
-        if not (self.plasmid or self.phage):
-            self.name = self.processPattern(self.name, ProkDna.patChromosome,
-                                            "chr", "1")
-            self.xlateChromosomeStr()
-            self.name = self.processPattern(self.name, ProkDna.patStrain,
-                                            "strain", "main")
+        self.name = self.processPattern(self.name, ProkDna.patChromosome,
+                                        "chr", "1")
+        self.xlateChromosomeStr()
+        defaultStrainName = "MAIN"
+        self.name = self.processPattern(self.name, ProkDna.patStrain1,
+                                        "strain", defaultStrainName)
+        if self.strain == defaultStrainName:
+            # Try another pattern
+            self.name = self.processPattern(self.name, ProkDna.patStrain2,
+                                            "strain", defaultStrainName)
+
 
     def getPtt(self):
         return self.ptt
@@ -146,6 +165,9 @@ class ProkDna(Object):
 
     def getPlasmid(self):
         return self.plasmid
+
+    def getIsClone(self):
+        return self.isClone
 
 
 class ProkDnaSet(Object):
@@ -182,6 +204,10 @@ class ProkDnaSet(Object):
     def getChrom(self, id):
         return self.dict[id]
 
+    def getChromIdList(self):
+        return self.dict.keys()
+
+
 class ProkGenome(Object):
     """
     Describes full organism's genome
@@ -190,6 +216,7 @@ class ProkGenome(Object):
         chroms - DNA from chromosomes, a dictionary of <strain> -> ProkDnaSet
         phages - list of ProkDna corresponding to phages
         plasmids - list of ProkDna corresponding to plasmids
+        clones - list of clones
     """
 
     def __init__(self, dir):
@@ -197,6 +224,7 @@ class ProkGenome(Object):
         self.chroms = {}
         self.phages = []
         self.plasmids = []
+        self.clones = []
 
     def add(self, prokDna):
         if prokDna.getStrain():
@@ -210,8 +238,31 @@ class ProkGenome(Object):
             self.phages.append(prokDna)
             return
 
+        if prokDna.getIsClone():
+            self.clones.append(prokDna)
+            return
+
         assert(prokDna.getPlasmid())
         self.plasmids.append(prokDna)
+
+    def verify(self):
+        # Check that every strain contais the same number of chromosomes, and
+        # that the names of chromosemes are consistent
+        count = 0
+        chromIdSet = None
+        for strain, prokDnaSet in self.chroms.iteritems():
+            if count == 0:
+                count = prokDnaSet.getChromCount()
+            if count != prokDnaSet.getChromCount():
+                raise GenomeError("ProkDnaSet %s: inconsistent chromosome "
+                                  "count" % self.chroms)
+            if count > 1:
+                if not chromIdSet:
+                    chromIdSet = set(prokDnaSet.getChromIdList())
+                else:
+                    if chromIdSet != set(prokDnaSet.getChromIdList()):
+                        raise GenomeError("ProkDnaSet %s: inconsistent "
+                                          "chromosome names" % self.chroms)
 
     def getDir(self):
         return self.dir
@@ -233,4 +284,10 @@ class ProkGenome(Object):
 
     def getPlasmid(self, ind):
         return self.plasmids[ind]
+
+    def getCloneCount(self):
+        return len(self.clones)
+
+    def getClone(self, ind):
+        return self.clones[ind]
 
