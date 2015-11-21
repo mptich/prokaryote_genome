@@ -3,7 +3,15 @@
 import os
 import re
 import json
-from utils import GenomeError
+
+# Make our exception more specific
+class GenomeError(Exception):
+
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
 
 class Object:
     """
@@ -42,17 +50,41 @@ class ProkDna(Object):
     plasmid: name of the plasmid (None if not plasmid)
     """
 
-    patChromosome = re.compile(r'(.*)(\bchromosome\b\s+([^\s]+))(.*)')
-    patPhage = re.compile(r'(.*)(\bphage\b\s+([^\s]+))(.*)')
-    patStrain = re.compile(r'(.*)(\bstr[\.|ain]\b\s+([^\s]+))(.*)')
-    patPlasmid = re.compile(r'(.*)(\bplasmid\b\s+([^\s]+))(.*)')
-    chromosomeXlator = {"1":0, "2":1, "3":2, "i":0, "ii":1, "iii":2}
+    # Legitimate chromosome representation (might have no name)
+    patChromosome = re.compile(r'(.*)(\bchromosome\b(?:\s+([^\s]+))?)(.*)')
+    chromosomeXlator = {"i":"1", "ii":"2", "iii":"3"}
+
+    # Phage representation (might have no name)
+    patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s]+))?)(.*)')
+
+    # Strain representation (must have name)
+    patStrain = re.compile(r'(.*)(\bstr[\.|ain]\b\s+([^\s]+ ))(.*)')
+
+    # Plasmid and megaplasmid patterns (might have no name)
+    patPlasmid = re.compile(r'(.*)(\b(?:mega)?plasmid\b(?:\s+([^\s]+))?)(.*)')
+
+    patWhiteSpace = re.compile(r'\s+')
+    patQuotedText = re.compile(r'([\'\"](.*?)[\'\"])')
 
     def xlateChromosomeStr(self):
-        # Translates chromosome string into 0 based id
+        # Translates chromosome string if needed
         if self.chr in ProkDna.chromosomeXlator:
-            return ProkDna.chromosomeXlator[self.chr]
-        raise GenomeError("ProkDna %s got untranslatable chromosome" % self)
+            self.chr = ProkDna.chromosomeXlator[self.chr]
+
+    @staticmethod
+    def removeQuotes(s):
+        miter = ProkDna.patQuotedText.finditer(s)
+        # Accumulated shift, because replacement string might be of
+        # different length
+        shift = 0
+        for m in miter:
+            startPos = m.start(1) + shift
+            endPos = m.end(1) + shift
+            replStr = m.group(2)
+            replStr = ProkDna.patWhiteSpace.sub('_', replStr)
+            shift += len(replStr) + startPos - endPos
+            s = s[:startPos] + replStr + s[endPos:]
+        return s
 
     def processPattern(self, name, pattern, attributeName, default):
         # Extracts matched feature, and returns updated DNA name
@@ -61,9 +93,12 @@ class ProkDna(Object):
         if not m:
             setattr(self, attributeName, default)
             return name
-        setattr(self, attributeName, m.group(2))
-        # Exclude the found feature from the name
-        return m.group(0) + m.group(3)
+        featureName = m.group(3)
+        if not featureName:
+            featureName = "NONAME"
+        setattr(self, attributeName, featureName)
+        # Exclude the found feature from the name, and trim white space
+        return ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
 
     def __init__(self, pttFileName):
         self.fullPttName = pttFileName
@@ -72,11 +107,11 @@ class ProkDna(Object):
         with open(pttFileName, 'r') as f:
             # Take the first line
             for l in f:
-                # Get DNA name, it is terminated by a comma
-                self.name = l.split(',')[0].lower()
+                # Get DNA name
+                self.name = ProkDna.removeQuotes(l.strip().lower())
                 break
 
-        self.chr = 0
+        self.chr = None
         self.strain = None
 
         self.name = self.processPattern(self.name, ProkDna.patPhage,
@@ -87,7 +122,7 @@ class ProkDna(Object):
         if not (self.plasmid or self.phage):
             self.name = self.processPattern(self.name, ProkDna.patChromosome,
                                             "chr", "1")
-            self.chr = self.xlateChromosomeStr()
+            self.xlateChromosomeStr()
             self.name = self.processPattern(self.name, ProkDna.patStrain,
                                             "strain", "main")
 
@@ -147,38 +182,28 @@ class ProkDnaSet(Object):
     def getChrom(self, id):
         return self.dict[id]
 
-    def validate(self):
-        # Make sure that all chromosomes are present
-        for i in range(len(self.dict)):
-            if i not in self.dict:
-                raise GenomeError("ProkDnaSet %s chromsome %d is missing" %
-                                  (self, i))
-
 class ProkGenome(Object):
     """
     Describes full organism's genome
     Attributes:
         dir - directory of this genome
-        main - main DNA, a dictionary of <strain> -> ProkDnaSet
+        chroms - DNA from chromosomes, a dictionary of <strain> -> ProkDnaSet
         phages - list of ProkDna corresponding to phages
         plasmids - list of ProkDna corresponding to plasmids
     """
 
     def __init__(self, dir):
         self.dir = dir
-        self.main = {}
+        self.chroms = {}
         self.phages = []
         self.plasmids = []
 
     def add(self, prokDna):
-        if self.dir != prokDna.getDir():
-            raise GenomeError("ProkGenome %s and ProkDna %s: dir mismatch" %
-                              (self, prokDna))
         if prokDna.getStrain():
             strain = prokDna.getStrain()
-            pds = self.main.get(strain, ProkDnaSet())
+            pds = self.chroms.get(strain, ProkDnaSet())
             pds.add(prokDna)
-            self.main[strain] = pds
+            self.chroms[strain] = pds
             return
 
         if prokDna.getPhage():
@@ -188,18 +213,14 @@ class ProkGenome(Object):
         assert(prokDna.getPlasmid())
         self.plasmids.append(prokDna)
 
-    def verify(self):
-        for strain, prokDnaset in self.main.iteritems():
-            prokDnaset.verify()
-
     def getDir(self):
         return self.dir
 
     def getStrainList(self):
-        return self.main.keys()
+        return self.chroms.keys()
 
     def getStrain(self, strain):
-        return self.main[strain]
+        return self.chroms[strain]
 
     def getPhageCount(self):
         return len(self.phages)
