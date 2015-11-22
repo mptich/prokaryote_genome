@@ -6,6 +6,12 @@ import glob
 import config
 import csv
 import json
+from genome_cls import GenomeError, ProkDna, \
+	ProkDnaSet, ProkGenome, GenomeJSONDecoderDictToObj
+
+with open(config.PROK_GENOME_DICT(), 'r') as fdict:
+	obj = json.load(fdict, object_hook = GenomeJSONDecoderDictToObj)
+	print obj
 
 # Dictionary that matches genome directory ->
 # (taxonomy organism name, name word match count)

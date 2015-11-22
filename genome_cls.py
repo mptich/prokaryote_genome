@@ -13,7 +13,7 @@ class GenomeError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class GenomeObject:
+class GenomeObject(object):
     """
     Base class defining serialization methods.
     """
@@ -24,8 +24,7 @@ class GenomeObject:
     def __str__(self):
         return repr(self)
 
-#JUSTATEMP
-huhu=0
+
 class GenomeJSONEncoder(json.JSONEncoder):
     """
     Converts a python object, where the object is derived from GenomeObject,
@@ -33,11 +32,6 @@ class GenomeJSONEncoder(json.JSONEncoder):
     """
     def default(self, obj):
         if isinstance(obj, GenomeObject):
-            #JUSTATEMP
-            global huhu
-            huhu += 1
-            print("%d OBJ %s" % (huhu, obj))
-            #JUSTATEMP END
             d = obj.__dict__
             d["__genomeobjecttype__"] = str(obj.__class__)
             return d
@@ -45,6 +39,15 @@ class GenomeJSONEncoder(json.JSONEncoder):
             return json.JSONEncoder.default(self, obj)
 
 
+def GenomeJSONDecoderDictToObj(d):
+    ourKey = "__genomeobjecttype__"
+    if ourKey in d:
+        moduleName, _, className = d.pop(ourKey).rpartition('.')
+        inst = type(className.encode('ascii'), (GenomeObject,), dict((
+            key.encode('ascii'), value) for key, value in d.items()))
+    else:
+        inst = d
+    return inst
 
 
 class ProkDna(GenomeObject):
@@ -63,23 +66,24 @@ class ProkDna(GenomeObject):
     """
 
     # Legitimate chromosome representation (might have no name)
-    patChromosome = re.compile(r'(.*)(\bchromosome\b(?:\s+([^\s]+))?)(.*)')
+    patChromosome = re.compile(r'(.*)(\bchromosome\b(?:\s+([^\s,]+))?)(.*)')
     chromosomeXlator = {"i":"1", "ii":"2", "iii":"3"}
 
     # Phage representation (might have no name)
-    patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s]+))?)(.*)')
+    patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s,]+))?)(.*)')
 
     # Strain representation (must have name)
-    patStrain1 = re.compile(r'(.*)(\bstr\b\.\s+([^\s]+))(.*)')
-    patStrain2 = re.compile(r'(.*)(\bstrain\b\s+([^\s]+))(.*)')
+    patStrain1 = re.compile(r'(.*)(\bstr\b\.\s+([^\s,]+))(.*)')
+    patStrain2 = re.compile(r'(.*)(\bstrain\b\s+([^\s,]+))(.*)')
 
     # Plasmid and megaplasmid patterns (might have no name)
-    patPlasmid = re.compile(r'(.*)(\b(?:mega)?plasmid\b(?:\s+([^\s]+))?)(.*)')
+    patPlasmid = re.compile(r'(.*)(\b(?:mega)?plasmid\b(?:\s+([^\s,]+))?)(.*)')
 
     # Clone match
     patClone = re.compile(r'.*\bclone\b.*')
 
     patWhiteSpace = re.compile(r'\s+')
+    patWhiteSpaceComma = re.compile(r'\s+,')
     patQuotedText = re.compile(r'([\'\"](.*?)[\'\"])')
 
     def xlateChromosomeStr(self):
@@ -114,7 +118,8 @@ class ProkDna(GenomeObject):
             featureName = "NONAME"
         setattr(self, attributeName, featureName)
         # Exclude the found feature from the name, and trim white space
-        return ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
+        name = ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
+        return ProkDna.patWhiteSpaceComma.sub(',', name)
 
     def __init__(self, pttFileName):
         self.fullPttName = pttFileName
@@ -125,6 +130,7 @@ class ProkDna(GenomeObject):
             for l in f:
                 # Get DNA name
                 self.name = ProkDna.removeQuotes(l.strip().lower())
+                self.name = ProkDna.patWhiteSpace.sub(' ', self.name)
                 break
 
         self.chr = None
@@ -186,12 +192,12 @@ class ProkDnaSet(GenomeObject):
     Collection of ProkDna objects, indexed by chromosome id (0 based)
     Attributes:
         strain - strain of the main DNA
-        dict - a dictionary of chromosome id -> ProkDna mappings
+        dct - a dictionary of chromosome id -> ProkDna mappings
     """
 
     def __init__(self):
         self.strain = None
-        self.dict = {}
+        self.dct = {}
 
     def add(self, prokDna):
         strain = prokDna.getStrain()
@@ -201,22 +207,22 @@ class ProkDnaSet(GenomeObject):
             raise GenomeError("ProkDnaSet %s and ProkDna %s got strain "
                               "mismatch" % (self, prokDna))
         chromId = prokDna.getChromId()
-        if chromId in self.dict:
+        if chromId in self.dct:
             raise GenomeError("ProkDnaSet %s adds ProkDna %s with the same "
                               "chromosome" % (self, prokDna))
-        self.dict[chromId] = prokDna
+        self.dct[chromId] = prokDna
 
     def getStrain(self):
         return self.strain
 
     def getChromCount(self):
-        return len(self.dict)
+        return len(self.dct)
 
     def getChrom(self, id):
-        return self.dict[id]
+        return self.dct[id]
 
     def getChromIdList(self):
-        return self.dict.keys()
+        return self.dct.keys()
 
 
 class ProkGenome(GenomeObject):
