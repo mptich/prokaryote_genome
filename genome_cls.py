@@ -1,56 +1,9 @@
 # This file defines classes used in the Prokaryotic Phylogeny Project.
 
-import os
 import re
-import json
+from import_proxy import *
 
-# Make our exception more specific
-class GenomeError(Exception):
-
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return repr(self.value)
-
-class GenomeObject(object):
-    """
-    Base class defining serialization methods.
-    """
-
-    def __repr__(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
-
-    def __str__(self):
-        return repr(self)
-
-
-class GenomeJSONEncoder(json.JSONEncoder):
-    """
-    Converts a python object, where the object is derived from GenomeObject,
-    into an object that can be decoded using the GenomeJSONDecoder.
-    """
-    def default(self, obj):
-        if isinstance(obj, GenomeObject):
-            d = obj.__dict__
-            d["__genomeobjecttype__"] = str(obj.__class__)
-            return d
-        else:
-            return json.JSONEncoder.default(self, obj)
-
-
-def GenomeJSONDecoderDictToObj(d):
-    ourKey = "__genomeobjecttype__"
-    if ourKey in d:
-        moduleName, _, className = d.pop(ourKey).rpartition('.')
-        inst = type(className.encode('ascii'), (GenomeObject,), dict((
-            key.encode('ascii'), value) for key, value in d.items()))
-    else:
-        inst = d
-    return inst
-
-
-class ProkDna(GenomeObject):
+class ProkDna(UtilObject):
     """
     Prokaryote DNA Molucule.
     Attributes:
@@ -121,11 +74,13 @@ class ProkDna(GenomeObject):
         name = ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
         return ProkDna.patWhiteSpaceComma.sub(',', name)
 
-    def __init__(self, pttFileName):
-        self.fullPttName = pttFileName
-        _, self.ptt = os.path.split(pttFileName)
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
+        self.fullPttName = kwargs["fullPttName"]
+        _, self.ptt = os.path.split(self.fullPttName)
 
-        with open(pttFileName, 'r') as f:
+        with open(self.fullPttName, 'r') as f:
             # Take the first line
             for l in f:
                 # Get DNA name
@@ -187,7 +142,7 @@ class ProkDna(GenomeObject):
         return self.isClone
 
 
-class ProkDnaSet(GenomeObject):
+class ProkDnaSet(UtilObject):
     """
     Collection of ProkDna objects, indexed by chromosome id (0 based)
     Attributes:
@@ -195,7 +150,9 @@ class ProkDnaSet(GenomeObject):
         dct - a dictionary of chromosome id -> ProkDna mappings
     """
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
         self.strain = None
         self.dct = {}
 
@@ -204,11 +161,11 @@ class ProkDnaSet(GenomeObject):
         if not self.strain:
             self.strain = strain
         if self.strain != strain:
-            raise GenomeError("ProkDnaSet %s and ProkDna %s got strain "
+            raise UtilError("ProkDnaSet %s and ProkDna %s got strain "
                               "mismatch" % (self, prokDna))
         chromId = prokDna.getChromId()
         if chromId in self.dct:
-            raise GenomeError("ProkDnaSet %s adds ProkDna %s with the same "
+            raise UtilError("ProkDnaSet %s adds ProkDna %s with the same "
                               "chromosome" % (self, prokDna))
         self.dct[chromId] = prokDna
 
@@ -225,7 +182,7 @@ class ProkDnaSet(GenomeObject):
         return self.dct.keys()
 
 
-class ProkGenome(GenomeObject):
+class ProkGenome(UtilObject):
     """
     Describes full organism's genome
     Attributes:
@@ -236,8 +193,10 @@ class ProkGenome(GenomeObject):
         clones - list of clones
     """
 
-    def __init__(self, dir):
-        self.dir = dir
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
+        self.dir = kwargs["dir"]
         self.chroms = {}
         self.phages = []
         self.plasmids = []
@@ -271,14 +230,14 @@ class ProkGenome(GenomeObject):
             if count == 0:
                 count = prokDnaSet.getChromCount()
             if count != prokDnaSet.getChromCount():
-                raise GenomeError("ProkDnaSet %s: inconsistent chromosome "
+                raise UtilError("ProkDnaSet %s: inconsistent chromosome "
                                   "count" % self.chroms)
             if count > 1:
                 if not chromIdSet:
                     chromIdSet = set(prokDnaSet.getChromIdList())
                 else:
                     if chromIdSet != set(prokDnaSet.getChromIdList()):
-                        raise GenomeError("ProkDnaSet %s: inconsistent "
+                        raise UtilError("ProkDnaSet %s: inconsistent "
                                           "chromosome names" % self.chroms)
 
     def getDir(self):

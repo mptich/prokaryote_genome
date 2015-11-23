@@ -24,4 +24,10 @@ def PROK_GENOME_DICT():
 def ROOT_DIR():
     return "/Users/morel/biology/"
 
+# Shared utilities directory
+def SHARED_PROG_DIR():
+    return ROOT_DIR() + "devel/shared/"
+
+
+
 
