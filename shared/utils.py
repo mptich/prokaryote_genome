@@ -21,7 +21,7 @@ class UtilObject(object):
     def buildFromDict(self, d):
         if UtilObjectKey in d:
             d.pop(UtilObjectKey)
-            for k, v in d.items:
+            for k, v in d.items():
                 setattr(self, k, v)
             return True
         return False
@@ -42,7 +42,7 @@ class UtilJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, UtilObject):
             d = obj.__dict__
-            d[UtilObjectKey] = str(obj.__class__)
+            d[UtilObjectKey] = obj.__module__ + '.' + obj.__class__.__name__
             return d
         else:
             return json.JSONEncoder.default(self, obj)

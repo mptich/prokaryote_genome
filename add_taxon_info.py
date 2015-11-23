@@ -10,8 +10,8 @@ from genome_cls import ProkDna, ProkDnaSet, ProkGenome
 from import_proxy import *
 
 with open(config.PROK_GENOME_DICT(), 'r') as fdict:
-	obj = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
-	print obj
+    obj = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+    print obj
 
 
 # Dictionary that matches genome directory ->
@@ -30,69 +30,69 @@ dirList = glob.glob(config.ORGANISMS() + "/*")
 dirDict = {}
 termDict = {}
 for d in dirList:
-	_, dir = os.path.split(d)
-	dirDict[dir] = set([x.lower() for x in dir.split('_')])
-	for t in dirDict[dir]:
-		if t == "":
-			continue
-		dirValList = termDict.get(t, [])
-		dirValList.append(dir)
-		termDict[t] = dirValList
+    _, dir = os.path.split(d)
+    dirDict[dir] = set([x.lower() for x in dir.split('_')])
+    for t in dirDict[dir]:
+        if t == "":
+            continue
+        dirValList = termDict.get(t, [])
+        dirValList.append(dir)
+        termDict[t] = dirValList
 
 
 with open(config.TAXONOMY(), 'r') as f:
-	csvr = csv.reader(f, delimiter = ',')
-	for l in csvr:
-		if len(l) != 7:
-			continue
-		name = l[2].lower()
-		sname = set(name.split(' '))
-		if len(sname) == 0:
-			continue
-		matched = False
-		# Take just one (any) element from this set
-		for dir in termDict.get(next(iter(sname)), []):
-			if sname.issubset(dirDict[dir]):
-				# We got the matching entry in the taxonomy
-				# Check if it has been written already
-				if dir in writtenTaxonomies:
-					# See if it is a better match, if yes - overwrite
-					oldName, oldMatchCount = writtenTaxonomies[dir]
-					if len(sname) == oldMatchCount:
-						# Error - match with the same count
-						print(("ERROR: %s is matched again by %s, " +
-							"was matched by %s") %
-						  	(dir, name, oldName))
-						errorCount += 1
-						continue
+    csvr = csv.reader(f, delimiter = ',')
+    for l in csvr:
+        if len(l) != 7:
+            continue
+        name = l[2].lower()
+        sname = set(name.split(' '))
+        if len(sname) == 0:
+            continue
+        matched = False
+        # Take just one (any) element from this set
+        for dir in termDict.get(next(iter(sname)), []):
+            if sname.issubset(dirDict[dir]):
+                # We got the matching entry in the taxonomy
+                # Check if it has been written already
+                if dir in writtenTaxonomies:
+                    # See if it is a better match, if yes - overwrite
+                    oldName, oldMatchCount = writtenTaxonomies[dir]
+                    if len(sname) == oldMatchCount:
+                        # Error - match with the same count
+                        print(("ERROR: %s is matched again by %s, " +
+                            "was matched by %s") %
+                            (dir, name, oldName))
+                        errorCount += 1
+                        continue
 
-					if (len(sname) < oldMatchCount):
-						# This match is worse, just ignore it
-						continue
+                    if (len(sname) < oldMatchCount):
+                        # This match is worse, just ignore it
+                        continue
 
-					# We found a better match
+                    # We found a better match
 
-				taxonomy = {
-					"name": name,
-					"id": int(l[0]),
-					"domain": l[1],
-					"phylum": l[3],
-					"class": l[4],
-					"order": l[5],
-					"family": l[6]
-				}
-				with open(config.ORGANISMS() + "/" + dir + "/" +
-						config.TAXONOMY_JSON_FILE(), 'w') as fjson:
-					json.dump(taxonomy, fjson)
-				writtenTaxonomies[dir] = (name, len(sname))
-				matched = True
-		if not matched:
-			orphanTaxonomies.add(name)
+                taxonomy = {
+                    "name": name,
+                    "id": int(l[0]),
+                    "domain": l[1],
+                    "phylum": l[3],
+                    "class": l[4],
+                    "order": l[5],
+                    "family": l[6]
+                }
+                with open(config.ORGANISMS() + "/" + dir + "/" +
+                        config.TAXONOMY_JSON_FILE(), 'w') as fjson:
+                    json.dump(taxonomy, fjson)
+                writtenTaxonomies[dir] = (name, len(sname))
+                matched = True
+        if not matched:
+            orphanTaxonomies.add(name)
 
 print orphanTaxonomies
 
 print("written %d, orphan %d, errors %d" %
-	   (len(writtenTaxonomies), len(orphanTaxonomies), errorCount))
+       (len(writtenTaxonomies), len(orphanTaxonomies), errorCount))
 
 
 
