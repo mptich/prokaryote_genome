@@ -5,6 +5,7 @@
 import config
 import os
 import imp
+import json
 
 def IMPORT_BY_PATH(path):
     modName = os.path.basename(path).split('.')[0]
@@ -12,4 +13,6 @@ def IMPORT_BY_PATH(path):
 
 utils = IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "utils.py")
 from utils import *
+
+from genome_cls import ProkDna, ProkDnaSet, ProkGenome
 

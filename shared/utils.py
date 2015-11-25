@@ -18,6 +18,9 @@ class UtilObject(object):
     Base class defining serialization methods.
     """
 
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
+
     def buildFromDict(self, d):
         if UtilObjectKey in d:
             d.pop(UtilObjectKey)

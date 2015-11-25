@@ -38,6 +38,9 @@ class ProkDna(UtilObject):
     patWhiteSpace = re.compile(r'\s+')
     patWhiteSpaceComma = re.compile(r'\s+,')
     patQuotedText = re.compile(r'([\'\"](.*?)[\'\"])')
+    # "complete chromsome" needs to be removed, otherwise it consumes
+    # the next word as the name of this chromosome
+    patCompleteChromosome = re.compile(r'complete chromosome ')
 
     def xlateChromosomeStr(self):
         # Translates chromosome string if needed
@@ -59,20 +62,18 @@ class ProkDna(UtilObject):
             s = s[:startPos] + replStr + s[endPos:]
         return s
 
-    def processPattern(self, name, pattern, attributeName, default):
+    def processPattern(self, name, pattern, default):
         # Extracts matched feature, and returns updated DNA name
-        # excluding the pattern)
+        # excluding the pattern, and teh feature value (or default)
         m = pattern.match(name)
         if not m:
-            setattr(self, attributeName, default)
-            return name
+            return (name, default)
         featureName = m.group(3)
         if not featureName:
             featureName = "NONAME"
-        setattr(self, attributeName, featureName)
         # Exclude the found feature from the name, and trim white space
         name = ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
-        return ProkDna.patWhiteSpaceComma.sub(',', name)
+        return (ProkDna.patWhiteSpaceComma.sub(',', name), featureName)
 
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
@@ -86,6 +87,7 @@ class ProkDna(UtilObject):
                 # Get DNA name
                 self.name = ProkDna.removeQuotes(l.strip().lower())
                 self.name = ProkDna.patWhiteSpace.sub(' ', self.name)
+                self.name = ProkDna.patCompleteChromosome.sub('', self.name)
                 break
 
         self.chr = None
@@ -98,23 +100,33 @@ class ProkDna(UtilObject):
             self.isClone = True
             return
 
-        self.name = self.processPattern(self.name, ProkDna.patPhage,
-                                        "phage", None)
-        self.name = self.processPattern(self.name, ProkDna.patPlasmid,
-                                        "plasmid", None)
+        self.name, self.phage = self.processPattern(self.name,
+                                                    ProkDna.patPhage, None)
+        self.name, self.plasmid = self.processPattern(self.name,
+                                                  ProkDna.patPlasmid, None)
         if self.plasmid or self.phage:
             return
 
-        self.name = self.processPattern(self.name, ProkDna.patChromosome,
-                                        "chr", "1")
+        self.name, self.chr = self.processPattern(self.name,
+                                               ProkDna.patChromosome, "1")
         self.xlateChromosomeStr()
+        # Some names have an extra chromosome string, remove it
+        self.name, _ = self.processPattern(self.name, ProkDna.patChromosome,
+                                           None)
+
         defaultStrainName = "MAIN"
-        self.name = self.processPattern(self.name, ProkDna.patStrain1,
-                                        "strain", defaultStrainName)
+        self.name, self.strain = self.processPattern(self.name,
+                                                    ProkDna.patStrain1,
+                                                    defaultStrainName)
         if self.strain == defaultStrainName:
             # Try another pattern
-            self.name = self.processPattern(self.name, ProkDna.patStrain2,
-                                            "strain", defaultStrainName)
+            self.name, self.strain = self.processPattern(self.name,
+                                                        ProkDna.patStrain2,
+                                                        defaultStrainName)
+
+        # Leave only the name up to the comma
+        self.name = ProkDna.patWhiteSpaceComma.sub(',', self.name)
+        self.name = self.name.split(',', 1)[0]
 
 
     def getPtt(self):
@@ -148,12 +160,15 @@ class ProkDnaSet(UtilObject):
     Attributes:
         strain - strain of the main DNA
         dct - a dictionary of chromosome id -> ProkDna mappings
+        name - offcial name of this strain, from the first line of the PTT
+            file
     """
 
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
             return
         self.strain = None
+        self.name = None
         self.dct = {}
 
     def add(self, prokDna):
@@ -163,11 +178,20 @@ class ProkDnaSet(UtilObject):
         if self.strain != strain:
             raise UtilError("ProkDnaSet %s and ProkDna %s got strain "
                               "mismatch" % (self, prokDna))
+        if not self.name:
+            self.name = prokDna.getName()
+        if self.name != prokDna.getName():
+            raise UtilError("Name mismatch: %s vs %s, ProkDna file %s" %
+                            (self.name, prokDna.getName(),
+                             prokDna.getFullPttName()))
         chromId = prokDna.getChromId()
         if chromId in self.dct:
             raise UtilError("ProkDnaSet %s adds ProkDna %s with the same "
                               "chromosome" % (self, prokDna))
         self.dct[chromId] = prokDna
+
+    def getName(selfself):
+        return self.name
 
     def getStrain(self):
         return self.strain

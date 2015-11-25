@@ -1,22 +1,12 @@
-# This module adds a taxonomy info as taxonomy.json file into all
-# genome directories for which we have this info.
+# This module adds information about taxonomy for all organisms it can find
+# it for
 
-import os
 import glob
-import config
 import csv
-import json
-from genome_cls import ProkDna, ProkDnaSet, ProkGenome
 from import_proxy import *
 
-with open(config.PROK_GENOME_DICT(), 'r') as fdict:
-    obj = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
-    print obj
-
-
-# Dictionary that matches genome directory ->
-# (taxonomy organism name, name word match count)
-writtenTaxonomies = {}
+# Set of the names of matched taxonomies
+matchedTaxonomies = set()
 
 # Taxonomies that could not be matched to any genome
 orphanTaxonomies = set()
@@ -24,21 +14,22 @@ orphanTaxonomies = set()
 # Something went wrong
 errorCount = 0
 
-
-
-dirList = glob.glob(config.ORGANISMS() + "/*")
-dirDict = {}
+# Mapping of name terms -> names, and corresponding ProkDna objects
 termDict = {}
-for d in dirList:
-    _, dir = os.path.split(d)
-    dirDict[dir] = set([x.lower() for x in dir.split('_')])
-    for t in dirDict[dir]:
-        if t == "":
-            continue
-        dirValList = termDict.get(t, [])
-        dirValList.append(dir)
-        termDict[t] = dirValList
 
+with open(config.PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
+    masterDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+
+for d, pds in masterDict.iteritems():
+    # Take name from any chromosome; consider what comes before the comma
+    pd = pds.getChrom(pds.getChromList()[0])
+    name = pd.getName().split(',')[0]
+    nameSet = set([x for name.split(' ') if x != ""])
+    for term in nameSet:
+        o = UtilObject(nameSet = nameSet, name = name, pd = pd)
+        l = termDict.get(term, [])
+        l.append(o)
+        termDict[term] = l
 
 with open(config.TAXONOMY(), 'r') as f:
     csvr = csv.reader(f, delimiter = ',')
@@ -51,8 +42,8 @@ with open(config.TAXONOMY(), 'r') as f:
             continue
         matched = False
         # Take just one (any) element from this set
-        for dir in termDict.get(next(iter(sname)), []):
-            if sname.issubset(dirDict[dir]):
+        for obj in termDict.get(next(iter(sname)), []):
+            if sname.issubset(obj.nameSet):
                 # We got the matching entry in the taxonomy
                 # Check if it has been written already
                 if dir in writtenTaxonomies:
@@ -88,6 +79,19 @@ with open(config.TAXONOMY(), 'r') as f:
                 matched = True
         if not matched:
             orphanTaxonomies.add(name)
+
+dirList = glob.glob(config.ORGANISMS() + "/*")
+dirDict = {}
+termDict = {}
+for d in dirList:
+    _, dir = os.path.split(d)
+    dirDict[dir] = set([x.lower() for x in dir.split('_')])
+    for t in dirDict[dir]:
+        if t == "":
+            continue
+        dirValList = termDict.get(t, [])
+        dirValList.append(dir)
+        termDict[t] = dirValList
 
 print orphanTaxonomies
 

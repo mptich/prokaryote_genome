@@ -20,6 +20,10 @@ def PROKARYOT_DIRS_FILE():
 def PROK_GENOME_DICT():
     return WORK_FILES_DIR() + "genome_dict.json"
 
+# Dump of the dictionary directory -> ProkDnaSet
+def PROK_CLEAN_GENOME_DICT():
+    return WORK_FILES_DIR() + "chromosome_dict.json"
+
 # Returns the absolute path to the root directory
 def ROOT_DIR():
     return "/Users/morel/biology/"
