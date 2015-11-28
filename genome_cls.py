@@ -132,8 +132,17 @@ class ProkDna(UtilObject):
     def getPtt(self):
         return self.ptt
 
+    def getPttBase(self):
+        return self.ptt.rpartition('.')[0]
+
     def getFullPttName(self):
         return self.fullPttName
+
+    def getDir(self):
+        return self.fullPttName.split('/').[-2]
+
+    def __hash__(self):
+        return self.getDir() + "-" + self.getPttBase()
 
     def getName(self):
         return self.name
@@ -170,6 +179,7 @@ class ProkDnaSet(UtilObject):
         self.strain = None
         self.name = None
         self.dct = {}
+        self.dir = None
 
     def add(self, prokDna):
         strain = prokDna.getStrain()
@@ -181,20 +191,36 @@ class ProkDnaSet(UtilObject):
         if not self.name:
             self.name = prokDna.getName()
         if self.name != prokDna.getName():
-            raise UtilError("Name mismatch: %s vs %s, ProkDna file %s" %
+            raise UtilError("Name mismatch in ProkDnaSet: %s vs %s, ProkDna "
+                            "file %s" %
                             (self.name, prokDna.getName(),
                              prokDna.getFullPttName()))
+
+        if not self.dir:
+            self.dir = prokDna.getDir()
+        if self.dir != prokDna.getDir():
+            raise UtilError("Directory mismatch in ProkDnaSet: %s vs %s, "
+                            "ProkDna file %s" %
+                            (self.dir, prokDna.getDir(),
+                             prokDna.getFullPttName()))
+
         chromId = prokDna.getChromId()
         if chromId in self.dct:
             raise UtilError("ProkDnaSet %s adds ProkDna %s with the same "
                               "chromosome" % (self, prokDna))
         self.dct[chromId] = prokDna
 
-    def getName(selfself):
+    def getName(self):
         return self.name
+
+    def getDir(self):
+        return self.dir
 
     def getStrain(self):
         return self.strain
+
+    def __hash__(self):
+        return self.dir + "-" + self.strain
 
     def getChromCount(self):
         return len(self.dct)
@@ -290,4 +316,36 @@ class ProkGenome(UtilObject):
 
     def getClone(self, ind):
         return self.clones[ind]
+
+
+class ProkCog(UtilObject):
+    """
+    Class describing a prokaryote COG.
+    Attributes:
+        name - name of the COG
+        chrom - ProkDna for this COG instance
+        pttLine - line in the PTT file
+        strand - strand of the chromosome
+        start - strating position in the chromosome
+        len - length, in terms of proteins
+        contLine - chain of aminiacids in the protein, as a line number in
+            the <COGNAME>.cnt file in the work files directory
+    """
+
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
+        self.__dict__.update(kwargs)
+
+    def __hash__(self):
+        return hash(self.chrom) + "-" + str(self.pttLine)
+
+    def getName(self):
+        return self.name
+
+    def getChrom(self):
+        return self.chrom
+
+
+
 
