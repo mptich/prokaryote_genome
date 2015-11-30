@@ -3,8 +3,11 @@
 import glob
 from import_proxy import *
 
-# Dictionary that will be saved into the file
-prokDict = {}
+# Dictionary dir -> ProkGenome. Saved into PROK_GENOME_DICT file.
+prokGenomeDict = {}
+
+# Dictionary ProkDna key -> ProkDna. Saved into PROK_DNA_DICT file.
+prokDnaDict = {}
 
 inputCount = 0
 
@@ -14,6 +17,7 @@ def newProkGenome(dir):
     pttFiles = glob.glob(fullDir + "*.ptt")
     for pttFileName in pttFiles:
         prokDna = ProkDna(fullPttName = pttFileName)
+        prokDnaDict[prokDna.key()] = prokDna
         prokGenome.add(prokDna)
     prokGenome.verify()
     return prokGenome
@@ -27,12 +31,17 @@ with open(config.PROKARYOT_DIRS_FILE(), 'r') as fdirs:
         except UtilError as e:
             print("UtilError: %s" % e)
             continue
-        prokDict[dir] = prokGenome
+        prokGenomeDict[dir] = prokGenome
 
 with open(config.PROK_GENOME_DICT(), 'w') as fdict:
-    json.dump(prokDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
+    json.dump(prokGenomeDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 
-print("Input %d entries, output %d entries" % (inputCount, len(prokDict)))
+print("Input %d entries, output %d entries" % (inputCount,
+                                               len(prokGenomeDict)))
 
+with open(config.PROK_DNA_DICT(), 'w') as fdict:
+    json.dump(prokDnaDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
+              indent = 4)
 
+print("ProkDna dictionary: %d entries" % len(prokDnaDict))

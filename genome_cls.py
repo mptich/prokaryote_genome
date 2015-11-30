@@ -139,10 +139,10 @@ class ProkDna(UtilObject):
         return self.fullPttName
 
     def getDir(self):
-        return self.fullPttName.split('/').[-2]
+        return self.fullPttName.split('/')[-2]
 
-    def __hash__(self):
-        return self.getDir() + "-" + self.getPttBase()
+    def key(self):
+        return self.getPttBase() + "-" + self.getDir()
 
     def getName(self):
         return self.name
@@ -219,8 +219,8 @@ class ProkDnaSet(UtilObject):
     def getStrain(self):
         return self.strain
 
-    def __hash__(self):
-        return self.dir + "-" + self.strain
+    def key(self):
+        return self.strain + "-" + self.dir
 
     def getChromCount(self):
         return len(self.dct)
@@ -323,12 +323,12 @@ class ProkCog(UtilObject):
     Class describing a prokaryote COG.
     Attributes:
         name - name of the COG
-        chrom - ProkDna for this COG instance
+        chrom - ProkDna.key for this COG instance
         pttLine - line in the PTT file
         strand - strand of the chromosome
         start - strating position in the chromosome
         len - length, in terms of proteins
-        contLine - chain of aminiacids in the protein, as a line number in
+        cntLine - chain of aminiacids in the protein, as a line number in
             the <COGNAME>.cnt file in the work files directory
     """
 
@@ -337,8 +337,8 @@ class ProkCog(UtilObject):
             return
         self.__dict__.update(kwargs)
 
-    def __hash__(self):
-        return hash(self.chrom) + "-" + str(self.pttLine)
+    def key(self):
+        return str(self.pttLine) + "-" + self.chrom
 
     def getName(self):
         return self.name

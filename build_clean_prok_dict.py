@@ -15,7 +15,7 @@ for d,pg in masterDict.iteritems():
         print("%d strains in %s" % (len(sn), d))
 
 with open(config.PROK_CLEAN_GENOME_DICT(), 'w') as fdict:
-	json.dump(cleanDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
-			  indent = 4)
+    json.dump(cleanDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
+              indent = 4)
 
 print("Output %d entries" % len(cleanDict))
