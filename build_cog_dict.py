@@ -2,6 +2,7 @@
 
 import re
 from import_proxy import *
+from filedefs import *
 
 cogPat = re.compile(r'^COG.*')
 
@@ -98,7 +99,7 @@ def buildCogSet(prokDna, cogProteinDict):
     return cogSet
 
 
-with open(config.PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
+with open(PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
     masterDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
 
 for d, prokDnaSet in masterDict.iteritems():
@@ -111,7 +112,7 @@ for d, prokDnaSet in masterDict.iteritems():
 multiFile.closeAll()
 print ("MultiFile stat: %s" % multiFile.getStats())
 
-with open(config.PROK_COGS_SET(), 'w') as fdict:
+with open(PROK_COGS_SET(), 'w') as fdict:
     json.dump(fullCogSet, fdict, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 

@@ -2,6 +2,7 @@
 
 import glob
 from import_proxy import *
+from filedefs import *
 
 # Dictionary dir -> ProkGenome. Saved into PROK_GENOME_DICT file.
 prokGenomeDict = {}
@@ -22,7 +23,7 @@ def newProkGenome(dir):
     prokGenome.verify()
     return prokGenome
 
-with open(config.PROKARYOT_DIRS_FILE(), 'r') as fdirs:
+with open(PROKARYOT_DIRS_FILE(), 'r') as fdirs:
     for dir in fdirs:
         inputCount += 1
         dir = dir.strip()
@@ -33,14 +34,14 @@ with open(config.PROKARYOT_DIRS_FILE(), 'r') as fdirs:
             continue
         prokGenomeDict[dir] = prokGenome
 
-with open(config.PROK_GENOME_DICT(), 'w') as fdict:
+with open(PROK_GENOME_DICT(), 'w') as fdict:
     json.dump(prokGenomeDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 
 print("Input %d entries, output %d entries" % (inputCount,
                                                len(prokGenomeDict)))
 
-with open(config.PROK_DNA_DICT(), 'w') as fdict:
+with open(PROK_DNA_DICT(), 'w') as fdict:
     json.dump(prokDnaDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 
