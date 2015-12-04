@@ -142,7 +142,7 @@ class ProkDna(UtilObject):
         return self.fullPttName.split('/')[-2]
 
     def key(self):
-        return self.getPttBase() + "-" + self.getDir()
+        return self.getPttBase() + ":" + self.getDir()
 
     def getName(self):
         return self.name
@@ -220,7 +220,7 @@ class ProkDnaSet(UtilObject):
         return self.strain
 
     def key(self):
-        return self.strain + "-" + self.dir
+        return self.strain + ":" + self.dir
 
     def getChromCount(self):
         return len(self.dct)
@@ -293,6 +293,9 @@ class ProkGenome(UtilObject):
     def getDir(self):
         return self.dir
 
+    def key(self):
+        return self.dir
+
     def getStrainList(self):
         return self.chroms.keys()
 
@@ -328,8 +331,8 @@ class ProkCog(UtilObject):
         strand - strand of the chromosome
         start - strating position in the chromosome
         len - length, in terms of proteins
-        cntLine - chain of aminiacids in the protein, as a line number in
-            the <COGNAME>.cnt file in the work files directory
+        faLine - chain of aminiacids in the protein, as a line number in
+            the <COGNAME>.fa file in the work files directory
     """
 
     def __init__(self, **kwargs):
@@ -338,7 +341,7 @@ class ProkCog(UtilObject):
         self.__dict__.update(kwargs)
 
     def key(self):
-        return str(self.pttLine) + "-" + self.chrom
+        return str(self.pttLine) + ":" + self.chrom
 
     def getName(self):
         return self.name

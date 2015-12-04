@@ -9,9 +9,9 @@ cogPat = re.compile(r'^COG.*')
 # Set of ProkCogs
 fullCogSet = set()
 
-# Dictionary of cnt files (containing just proteins), file name -> current
+# Dictionary of FASTA files containing COG proteins, file name -> current
 # line number
-cntFileDict = {}
+faFileDict = {}
 
 multiFile = UtilMultiFile(3000, "a")
 
@@ -86,15 +86,18 @@ def buildCogSet(prokDna, cogProteinDict):
                 print("COG from file %s line %u pid %s not in FAA file" % (
                     prokDna.getFullPttName(), lineCount, cogPid))
                 continue
-            cntFileName = config.WORK_FILES_DIR() + cogName + ".cnt"
-            cntLineNumber = cntFileDict.get(cntFileName, 0) + 1
-            cntFileDict[cntFileName] = cntLineNumber
-            multiFile.write(cntFileName, cogProteinDict[cogPid] + '\n')
+
+            faFileName = config.WORK_FILES_DIR() + cogName + ".fa"
+            faLineNumber = faFileDict.get(faFileName, 1)
 
             cog = ProkCog(name = cogName, chrom = prokDna.key(), pttLine =
                 lineCount, strand = cogStrand, start = cogStart, len = cogLen,
-                cntLine = cntLineNumber)
+                faLine = faLineNumber)
             cogSet.add(cog)
+
+            multiFile.write(faFileName, '>' + cog.key() + '\n' +
+                            cogProteinDict[cogPid] + '\n')
+            faFileDict[faFileName] = faLineNumber + 2
 
     return cogSet
 
@@ -117,3 +120,4 @@ with open(PROK_COGS_SET(), 'w') as fdict:
               indent = 4)
 
 print("%d ProkDna's mapped to cog sets" % len(fullCogSet))
+print("Created %d COG files" % len(faFileDict))

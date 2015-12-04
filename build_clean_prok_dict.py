@@ -23,11 +23,12 @@ with open(PROK_CLEAN_GENOME_DICT(), 'w') as fdict:
 print("%s: output %d entries" % (PROK_CLEAN_GENOME_DICT(), len(cleanDict)))
 
 # Now creating files with Taxonomy
-taxonomyParser = TaxonomyParser(config.TAXONOMY())
+taxonomyParser = TaxonomyParser(config.TAXONOMY_FILE())
 
 for pds in cleanDict.values():
-    for cid in pds.getChromosomeIdList():
+    for cid in pds.getChromIdList():
         pd = pds.getChrom(cid)
         taxonomyParser.addProkDna(pd)
 
 taxonomyParser.process()
+print(taxonomyParser.stats())
