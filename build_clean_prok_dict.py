@@ -26,9 +26,7 @@ print("%s: output %d entries" % (PROK_CLEAN_GENOME_DICT(), len(cleanDict)))
 taxonomyParser = TaxonomyParser(config.TAXONOMY_FILE())
 
 for pds in cleanDict.values():
-    for cid in pds.getChromIdList():
-        pd = pds.getChrom(cid)
-        taxonomyParser.addProkDna(pd)
+    taxonomyParser.addProkDnaSet(pds)
 
 taxonomyParser.process()
 print(taxonomyParser.stats())

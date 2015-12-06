@@ -14,5 +14,5 @@ def IMPORT_BY_PATH(path):
 utils = IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "utils/utils.py")
 from utils import *
 
-from genome_cls import ProkDna, ProkDnaSet, ProkGenome, ProkCog
+from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 

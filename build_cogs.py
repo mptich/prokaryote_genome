@@ -1,4 +1,4 @@
-# This module builds set of ProkCogs
+# This module builds set of CogInst, and Cog objects
 
 import re
 from import_proxy import *
@@ -6,14 +6,25 @@ from filedefs import *
 
 cogPat = re.compile(r'^COG.*')
 
-# Set of ProkCogs
-fullCogSet = set()
+# Set of CogInst
+fullCogInstSet = set()
+
+# Dictionary mapping COG name -> Cog
+fullCogDict = {}
 
 # Dictionary of FASTA files containing COG proteins, file name -> current
 # line number
 faFileDict = {}
 
+# Dictionary of genome -> COG count
+genomeDict = {}
+
+# Use multifile to append files
 multiFile = UtilMultiFile(3000, "a")
+
+# Files with COG protein sequences
+def cogFastaFileName(nameBase):
+    return config.WORK_FILES_DIR() + nameBase + ".fa"
 
 # Returns a set of COGs contaned in this prokDna
 def getCogSet(prokDna):
@@ -49,7 +60,7 @@ def getCogSet(prokDna):
     return buildCogSet(prokDna, cogProteinDict)
 
 def buildCogSet(prokDna, cogProteinDict):
-    cogSet = set()
+    cogInstSet = set()
 
     with open(prokDna.getFullPttName(), 'r') as fptt:
         # Skip first 3 lines
@@ -87,19 +98,19 @@ def buildCogSet(prokDna, cogProteinDict):
                     prokDna.getFullPttName(), lineCount, cogPid))
                 continue
 
-            faFileName = config.WORK_FILES_DIR() + cogName + ".fa"
+            faFileName = cogFastaFileName(cogName)
             faLineNumber = faFileDict.get(faFileName, 1)
 
-            cog = ProkCog(name = cogName, chrom = prokDna.key(), pttLine =
+            cogInst = CogInst(name = cogName, chrom = prokDna.key(), pttLine =
                 lineCount, strand = cogStrand, start = cogStart, len = cogLen,
                 faLine = faLineNumber)
-            cogSet.add(cog)
+            cogInstSet.add(cogInst)
 
-            multiFile.write(faFileName, '>' + cog.key() + '\n' +
+            multiFile.write(faFileName, '>' + cogInst.key() + '\n' +
                             cogProteinDict[cogPid] + '\n')
             faFileDict[faFileName] = faLineNumber + 2
 
-    return cogSet
+    return cogInstSet
 
 
 with open(PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
@@ -108,16 +119,61 @@ with open(PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
 for d, prokDnaSet in masterDict.iteritems():
     for cid in prokDnaSet.getChromIdList():
         prokDna = prokDnaSet.getChrom(cid)
-        cogSet = getCogSet(prokDna)
-        if cogSet:
-            fullCogSet.update(cogSet)
+        cogInstSet = getCogSet(prokDna)
+        if cogInstSet:
+            fullCogInstSet.update(cogInstSet)
 
 multiFile.closeAll()
 print ("MultiFile stat: %s" % multiFile.getStats())
 
-with open(PROK_COGS_SET(), 'w') as fdict:
-    json.dump(fullCogSet, fdict, cls = UtilJSONEncoder, sort_keys = True,
+# Now build fullCogDict
+for cogInst in fullCogInstSet:
+    cog = fullCogDict.get(cogInst.getName(), Cog(name=cogInst.getName()))
+    cog.addCogInst(cogInst)
+    fullCogDict[cogInst.getName()] = cog
+
+removeCogNames = set()
+cogNamesList = fullCogDict.items()
+for name, cog in cogNamesList:
+    genomes = cog.calculate()
+    if cog.getGenCount() < 2:
+        removeCogNames.add(name)
+        del fullCogDict[name]
+        os.remove(cogFastaFileName(name))
+    else:
+        for g in genomes:
+            genomeDict[g] = genomeDict.get(g, 0) + 1
+
+removeCogInst = set()
+for cogInst in fullCogInstSet:
+    if cogInst.getName() in removeCogNames:
+        removeCogInst.add(cogInst)
+fullCogInstSet = fullCogInstSet.difference(removeCogInst)
+
+print("%d Cog Instances" % len(fullCogInstSet))
+print("Dumping to a file...")
+with open(COG_INST_SET(), 'w') as f:
+    json.dump(fullCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 
-print("%d ProkDna's mapped to cog sets" % len(fullCogSet))
-print("Created %d COG files" % len(faFileDict))
+print("%d Cogs, removed %d Cogs" % (len(fullCogDict), len(removeCogInst)))
+print("Dumping to a file...")
+with open(COG_LIST(), 'w') as f:
+    cogList = sorted(fullCogDict.values(), key = lambda x: x.instCount,
+                     reverse = True)
+    json.dump(cogList, f, cls = UtilJSONEncoder, sort_keys=True, indent=4)
+
+print("%d genomes got meaningful COGs" % len(genomeDict))
+with open(GENOME_COG_CNT_LIST(), 'w') as f:
+    json.dump(sorted(genomeDict.items(), key = lambda x: x[1]), f, cls =
+        UtilJSONEncoder, sort_keys=True, indent=4)
+
+# See how many genomes got both COGs and taxa
+with open(PROK_TAXA_DICT(), 'r') as f:
+    taxaDict = json.load(f, object_hook = UtilJSONDecoderDictToObj)
+taxaSet = set(taxaDict.keys())
+genomeWithCogsSet = set(genomeDict.keys())
+print("%d genomes with both taxa and COGs" % len(set.intersection(taxaSet,
+    genomeWithCogsSet)))
+
+

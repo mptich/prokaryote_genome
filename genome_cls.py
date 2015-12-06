@@ -1,6 +1,7 @@
 # This file defines classes used in the Prokaryotic Phylogeny Project.
 
 import re
+import numpy
 from import_proxy import *
 
 class ProkDna(UtilObject):
@@ -143,6 +144,12 @@ class ProkDna(UtilObject):
 
     def key(self):
         return self.getPttBase() + ":" + self.getDir()
+
+    @staticmethod
+    def getDirFromKey(key):
+        keyComponents = key.split(':')
+        assert(len(keyComponents) == 2)
+        return keyComponents[1]
 
     def getName(self):
         return self.name
@@ -321,11 +328,11 @@ class ProkGenome(UtilObject):
         return self.clones[ind]
 
 
-class ProkCog(UtilObject):
+class CogInst(UtilObject):
     """
-    Class describing a prokaryote COG.
+    Class describing a prokaryote COG instance.
     Attributes:
-        name - name of the COG
+        name - name of the COG instance
         chrom - ProkDna.key for this COG instance
         pttLine - line in the PTT file
         strand - strand of the chromosome
@@ -343,11 +350,64 @@ class ProkCog(UtilObject):
     def key(self):
         return str(self.pttLine) + ":" + self.chrom
 
+    @staticmethod
+    def getDirFromKey(key):
+        keyComponents = key.split(':', 1)
+        assert(len(keyComponents) == 2)
+        return ProkDna.getDirFromKey(keyComponents[1])
+
     def getName(self):
         return self.name
 
     def getChrom(self):
         return self.chrom
+
+
+class Cog(UtilObject):
+    """
+    COG describing all COG instances
+    Attributes:
+        name - name of the COG
+        instCount - how many instances
+        genCount - in how many genomes
+        meanInstPerGen - float, mean of instances per genome
+        stdInstPerGen - float STD (biased, from numpy) of instances per genome
+        tempDict - temporary dictionary of genome -> # of CogInst
+    """
+
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
+        self.name = kwargs["name"]
+        self.instCount = 0
+        self.genCount = None
+        self.meanInstPerGen = 0.
+        self.stdInstPerGen = 0.
+        self.tempDict = {}
+
+    def addCogInst(self, cogInst):
+        assert(self.name == cogInst.getName())
+        dir = CogInst.getDirFromKey(cogInst.key())
+        self.tempDict[dir] = self.tempDict.get(dir, 0) + 1
+        self.instCount += 1
+
+    def calculate(self):
+        """
+        :return: List of genomes
+        """
+        self.genCount = len(self.tempDict)
+        self.meanInstPerGen = numpy.mean(self.tempDict.values())
+        self.stdInstPerGen = numpy.std(self.tempDict.values())
+        dirNames = self.tempDict.keys()
+        del self.tempDict
+        return dirNames
+
+    def getGenCount(self):
+        return self.genCount
+
+    def key(self):
+        return self.name
+
 
 
 

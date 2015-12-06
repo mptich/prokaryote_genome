@@ -10,12 +10,12 @@ class TaxonomyParser(UtilObject):
     def __init__(self, fileName):
         # Mapping of name terms -> names
         self.termDict = {}
-        # Mapping of names to ProkDna Object set
+        # Mapping of names to ProkDnaSet
         self.nameDict = {}
         # Set of unmatched organism names from Taxonomy
         self.unmatchedSet = set()
 
-        # The main result: map of ProkDna keys to Taxa's
+        # The main result: map of ProkDnaSet keys to Taxa's
         self.taxaDict = {}
 
         # Mapping of taxonomy names to Taxa
@@ -29,12 +29,10 @@ class TaxonomyParser(UtilObject):
                         order = ll[5], family=ll[6])
                 self.taxaNamesDict[ll[2]] = taxa
 
-    def addProkDna(self, prokDna):
-        name = prokDna.getName()
-        prokDnaSet = self.nameDict.get(name, set())
-        prokDnaSet.add(prokDna)
+    def addProkDnaSet(self, prokDnaSet):
+        name = prokDnaSet.getName()
         self.nameDict[name] = prokDnaSet
-        # Break the name into teh terms
+        # Break the name into the terms
         nameList = re.split(' |,', name)
         for n in nameList:
             nameSet = self.termDict.get(n, set())
@@ -71,8 +69,7 @@ class TaxonomyParser(UtilObject):
 
             for d in shortestNameDictList:
                 prokDnaSet = self.nameDict[d["name"]]
-                for pd in prokDnaSet:
-                    self.taxaDict[pd.key()] = taxa
+                self.taxaDict[prokDnaSet.getDir()] = taxa
 
         # Dump taxa dixionary and unmatched Taxa organism names
         with open(PROK_TAXA_DICT(), 'w') as f:
@@ -84,7 +81,7 @@ class TaxonomyParser(UtilObject):
 
     def stats(self):
         return ("Taxonomy size %d, out of them unmatched %d; "
-            "PokDna matched %d" % (len(self.taxaNamesDict),
+            "%d gemomes matched taxonomy" % (len(self.taxaNamesDict),
             len(self.unmatchedSet), len(self.taxaDict)))
 
 
@@ -105,5 +102,18 @@ class Taxa(UtilObject):
         return self.family + "-" + self.order + "-" + self.cls + "-" + \
             self.phylum + "-" + self.domain
 
+    def distance(self, other):
+        if self.family == other.family:
+            return 0
+        elif self.order == other.order:
+            return 1
+        elif self.cls == other.cls:
+            return 2
+        elif self.phylum == other.phylum:
+            return 3
+        elif self.domain == other.domain:
+            return 4
+        else:
+            return 5
 
 

@@ -18,11 +18,19 @@ def PROK_DNA_DICT():
 def PROK_CLEAN_GENOME_DICT():
     return config.WORK_FILES_DIR() + "chromosome_dict.json"
 
-# Dump of ProkCogs
-def PROK_COGS_SET():
-    return config.WORK_FILES_DIR() + "cogs_set.json"
+# Dump of CogInst set
+def COG_INST_SET():
+    return config.WORK_FILES_DIR() + "cog_inst_set.json"
 
-# Dump of ProkDna.key() -> Taxa
+# Dump of Cog list
+def COG_LIST():
+    return config.WORK_FILES_DIR() + "cog_list.json"
+
+# Dump of list of (genome, COG count) tuples
+def GENOME_COG_CNT_LIST():
+    return config.WORK_FILES_DIR() + "genome_cog_cnt_list.json"
+
+# Dump of ProkDnaSet.key() -> Taxa
 def PROK_TAXA_DICT():
     return config.WORK_FILES_DIR() + "taxa_dict.json"
 
