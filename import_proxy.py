@@ -11,7 +11,7 @@ def IMPORT_BY_PATH(path):
     modName = os.path.basename(path).split('.')[0]
     return imp.load_source(modName, path)
 
-utils = IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "utils/utils.py")
+utils = IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "pyutils/utils.py")
 from utils import *
 
 from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
