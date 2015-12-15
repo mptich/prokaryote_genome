@@ -362,6 +362,9 @@ class CogInst(UtilObject):
     def getChrom(self):
         return self.chrom
 
+    def getLen(self):
+        return self.len
+
 
 class Cog(UtilObject):
     """

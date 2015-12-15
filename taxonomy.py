@@ -26,7 +26,7 @@ class TaxonomyParser(UtilObject):
                 if len(ll) != 7:
                     continue
                 taxa = Taxa(domain=ll[1], phylum=ll[3], cls=ll[4], \
-                        order = ll[5], family=ll[6])
+                        name = ll[2], order = ll[5], family=ll[6])
                 self.taxaNamesDict[ll[2]] = taxa
 
     def addProkDnaSet(self, prokDnaSet):
@@ -67,9 +67,9 @@ class TaxonomyParser(UtilObject):
                         shortestNameDictList.append(d)
                 assert(shortestNameDictList)
 
-            for d in shortestNameDictList:
-                prokDnaSet = self.nameDict[d["name"]]
-                self.taxaDict[prokDnaSet.getDir()] = taxa
+                for d in shortestNameDictList:
+                    prokDnaSet = self.nameDict[d["name"]]
+                    self.taxaDict[prokDnaSet.getDir()] = taxa
 
         # Dump taxa dixionary and unmatched Taxa organism names
         with open(PROK_TAXA_DICT(), 'w') as f:

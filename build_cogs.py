@@ -132,23 +132,12 @@ for cogInst in fullCogInstSet:
     cog.addCogInst(cogInst)
     fullCogDict[cogInst.getName()] = cog
 
-removeCogNames = set()
 cogNamesList = fullCogDict.items()
 for name, cog in cogNamesList:
     genomes = cog.calculate()
-    if cog.getGenCount() < 2:
-        removeCogNames.add(name)
-        del fullCogDict[name]
-        os.remove(cogFastaFileName(name))
-    else:
-        for g in genomes:
-            genomeDict[g] = genomeDict.get(g, 0) + 1
-
-removeCogInst = set()
-for cogInst in fullCogInstSet:
-    if cogInst.getName() in removeCogNames:
-        removeCogInst.add(cogInst)
-fullCogInstSet = fullCogInstSet.difference(removeCogInst)
+    assert(cog.getGenCount() >= 1)
+    for g in genomes:
+        genomeDict[g] = genomeDict.get(g, 0) + 1
 
 print("%d Cog Instances" % len(fullCogInstSet))
 print("Dumping to a file...")
@@ -156,14 +145,14 @@ with open(COG_INST_SET(), 'w') as f:
     json.dump(fullCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
               indent = 4)
 
-print("%d Cogs, removed %d Cogs" % (len(fullCogDict), len(removeCogInst)))
+print("%d Cogs total" % len(fullCogDict))
 print("Dumping to a file...")
 with open(COG_LIST(), 'w') as f:
     cogList = sorted(fullCogDict.values(), key = lambda x: x.instCount,
                      reverse = True)
     json.dump(cogList, f, cls = UtilJSONEncoder, sort_keys=True, indent=4)
 
-print("%d genomes got meaningful COGs" % len(genomeDict))
+print("%d genomes got COGs" % len(genomeDict))
 with open(GENOME_COG_CNT_LIST(), 'w') as f:
     json.dump(sorted(genomeDict.items(), key = lambda x: x[1]), f, cls =
         UtilJSONEncoder, sort_keys=True, indent=4)
