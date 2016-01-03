@@ -11,8 +11,11 @@ def IMPORT_BY_PATH(path):
     modName = os.path.basename(path).split('.')[0]
     return imp.load_source(modName, path)
 
-utils = IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "pyutils/utils.py")
+IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "pyutils/utils.py")
 from utils import *
+
+IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "algorithms/kendall.py")
+from kendall import calculateWeighetedKendall
 
 from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 

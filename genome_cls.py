@@ -350,11 +350,8 @@ class CogInst(UtilObject):
     def key(self):
         return str(self.pttLine) + ":" + self.chrom
 
-    @staticmethod
-    def getDirFromKey(key):
-        keyComponents = key.split(':', 1)
-        assert(len(keyComponents) == 2)
-        return ProkDna.getDirFromKey(keyComponents[1])
+    def getDir(self):
+        return ProkDna.getDirFromKey(self.chrom)
 
     def getName(self):
         return self.name

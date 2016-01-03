@@ -1,5 +1,5 @@
 # This file builds additional files, not needed by this project,
-# but requested by other folks
+# but requested by other folks to create files for them to investigate.
 
 from import_proxy import *
 from filedefs import *
@@ -28,7 +28,7 @@ print("Processing cogInstList...")
 cogInstList = []
 dirExceptions = set()
 for cogInst in cogSet:
-    dir = ProkDna.getDirFromKey(cogInst.getChrom())
+    dir = cogInst.getDir()
     if dir in dirDict:
         cogInstList.append((dirDict[dir], cogInst.getName(), cogInst.getLen()))
     else:

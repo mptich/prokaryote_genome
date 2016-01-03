@@ -116,4 +116,8 @@ class Taxa(UtilObject):
         else:
             return 5
 
+    @staticmethod
+    def maxDistance():
+        return 5
+
 
