@@ -103,7 +103,7 @@ for dir in validDirSet:
     taxList = [taxDict[x] for x in validDirSet]
     #weights = [1/(x+1.) for x in taxList]
     cogList = [cogDict[x] for x in validDirSet]
-    d = calculateWeighetedKendall(cogList, taxList, weights)
+    d = calculateWeightedKendall(cogList, taxList, weights)
     distList.append(d)
 
 print("Dist correlation: mean %f std %f" % (np.mean(distList), np.std(
