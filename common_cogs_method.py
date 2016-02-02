@@ -12,7 +12,7 @@ from filedefs import *
 import numpy as np
 from taxonomy import *
 import random
-import sys
+import operator
 
 def commonCogsDist(cs1, cs2):
     """
@@ -97,6 +97,7 @@ print("COG distannce distribution %s" % ', '.join(map(str, [(np.mean(x),
 print("Comparing taxonomy and common COG distances...")
 distList = []
 weights = [1.] * len(validDirSet)
+distDict = {}
 for dir in validDirSet:
     taxDict = taxDist[dir]
     cogDict = cogDist[dir]
@@ -105,10 +106,16 @@ for dir in validDirSet:
     cogList = [cogDict[x] for x in validDirSet]
     d = calculateWeightedKendall(cogList, taxList, weights)
     distList.append(d)
+    distDict[dir] = d
 
 print("Dist correlation: mean %f std %f" % (np.mean(distList), np.std(
     distList)))
 
+print("Negative correlations:")
+sortedDistDict = sorted(distDict.items(), key=operator.itemgetter(1))
+for dir, dist in sortedDistDict:
+    if dist < 0:
+        print("Dir %s dist %d" % (dir, dist))
 
 
 

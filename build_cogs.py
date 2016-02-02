@@ -3,11 +3,15 @@
 import re
 from import_proxy import *
 from filedefs import *
+import random
 
 cogPat = re.compile(r'^COG.*')
 
 # Set of CogInst
 fullCogInstSet = set()
+
+# Sample set of CogInst, for debugging
+sampleCogInstSet = set()
 
 # Dictionary mapping COG name -> Cog
 fullCogDict = {}
@@ -127,10 +131,21 @@ multiFile.closeAll()
 print ("MultiFile stat: %s" % multiFile.getStats())
 
 # Now build fullCogDict
+print("Building fullCogDict...")
 for cogInst in fullCogInstSet:
     cog = fullCogDict.get(cogInst.getName(), Cog(name=cogInst.getName()))
     cog.addCogInst(cogInst)
     fullCogDict[cogInst.getName()] = cog
+
+# Make a sample subset of COGs, for debugging
+print("Building sampleCogInstSet...")
+sampleCogNames = set()
+for cogName in fullCogDict.keys():
+    if random.randrange(40) == 0:
+        sampleCogNames.add(cogName)
+for cogInst in fullCogInstSet:
+    if cogInst.getName() in sampleCogNames:
+        sampleCogInstSet.add(cogInst)
 
 cogNamesList = fullCogDict.items()
 for name, cog in cogNamesList:
@@ -143,7 +158,13 @@ print("%d Cog Instances" % len(fullCogInstSet))
 print("Dumping to a file...")
 with open(COG_INST_SET(), 'w') as f:
     json.dump(fullCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
-              indent = 4)
+        indent = 4)
+
+print("%d Sample Cog Instances" % len(sampleCogInstSet))
+print("Dumping to a file...")
+with open(SAMPLE_COG_INST_SET(), 'w') as f:
+    json.dump(sampleCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
+        indent = 4)
 
 print("%d Cogs total" % len(fullCogDict))
 print("Dumping to a file...")

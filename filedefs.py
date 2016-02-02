@@ -22,6 +22,10 @@ def PROK_CLEAN_GENOME_DICT():
 def COG_INST_SET():
     return config.WORK_FILES_DIR() + "cog_inst_set.json"
 
+# Dump of sample CogInst set
+def SAMPLE_COG_INST_SET():
+    return config.WORK_FILES_DIR() + "sample_cog_inst_set.json"
+
 # Dump of Cog list
 def COG_LIST():
     return config.WORK_FILES_DIR() + "cog_list.json"

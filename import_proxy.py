@@ -15,7 +15,7 @@ IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "pyutils/utils.py")
 from utils import *
 
 IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "algorithms/kendall.py")
-from kendall import calculateWeighetedKendall
+from kendall import calculateWeightedKendall
 
 from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 
