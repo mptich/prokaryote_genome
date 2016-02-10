@@ -17,5 +17,8 @@ from utils import *
 IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "algorithms/kendall.py")
 from kendall import calculateWeightedKendall
 
+IMPORT_BY_PATH(config.SHARED_PROG_DIR() + "algorithms/distance_matrix.py")
+from distance_matrix import *
+
 from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 

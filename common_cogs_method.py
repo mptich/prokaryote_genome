@@ -13,6 +13,7 @@ import numpy as np
 from taxonomy import *
 import random
 import operator
+import math
 
 def commonCogsDist(cs1, cs2):
     """
@@ -25,6 +26,15 @@ def commonCogsDist(cs1, cs2):
     commonSet = cs1 & cs2
     l = len(commonSet) + 1
     return float(len(cs1)) * len(cs2) / (l * l)
+
+def commonCogsWeight(cs1, cs2):
+    """
+    Calculates weight of the distance based on common COGs
+    :param cs1: 1st set of cog names
+    :param cs2: 2nd set of cog names
+    :return: weight, based on the equation sqrt(len(cs1) * len(cs2))
+    """
+    return math.sqrt(float(len(cs1)) * len(cs2))
 
 print("reading COG instance set...")
 with open(COG_INST_SET(), 'r') as fset:
@@ -96,7 +106,6 @@ print("COG distannce distribution %s" % ', '.join(map(str, [(np.mean(x),
 
 print("Comparing taxonomy and common COG distances...")
 distList = []
-weights = [1.] * len(validDirSet)
 distDict = {}
 for dir in validDirSet:
     taxDict = taxDist[dir]
