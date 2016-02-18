@@ -3,7 +3,6 @@
 # This file defines a method to determine the number of modes based on COG
 # length distribution. It uses Kernel Density Estimation.
 
-from import_proxy import *
 from filedefs import *
 from taxonomy import *
 import numpy as np

@@ -7,13 +7,13 @@
 # Distance between COGs in terms of their taxonomy is defined in
 # Taxa.distance() method (file taxonomy.py)
 
-from import_proxy import *
 from filedefs import *
 import numpy as np
 from taxonomy import *
 import random
 import operator
 import math
+from shared.pyutils.distance_matrix import *
 
 def commonCogsDist(cs1, cs2):
     """
@@ -69,22 +69,21 @@ print("Valid set contains %d organisms" % len(validDirSet))
 
 print("Building COG distances...")
 cogDist = {}
+cogWeights = {}
 for dir1, cs1 in cogDict.items():
     if dir1 not in validDirSet:
         continue
-    dict = {}
-    cogDist[dir1] = dict
+    dictDirCogDist = {}
+    cogDist[dir1] = dictDirCogDist
+    dictDirWeights = {}
+    cogWeights[dir1] = dictDirWeights
     for dir2, cs2 in cogDict.items():
         if dir2 not in validDirSet:
             continue
-        dict[dir2] = commonCogsDist(cs1, cs2)
+        dictDirCogDist[dir2] = commonCogsDist(cs1, cs2)
+        dictDirWeights[dir2] = commonCogsWeight(cs1, cs2)
 
 print("Building Taxonomy distances...")
-histTaxDist = [0] * (Taxa.maxDistance() + 1)
-
-cogDistLists = []
-for i in range(Taxa.maxDistance() + 1):
-    cogDistLists.append([])
 taxDist = {}
 for dir1, taxa1 in taxaDict.items():
     if dir1 not in validDirSet:
@@ -95,36 +94,25 @@ for dir1, taxa1 in taxaDict.items():
         if dir2 not in validDirSet:
             continue
         d = taxa1.distance(taxa2)
-        histTaxDist[d] += 1
-        cogDistLists[d].append(cogDist[dir1][dir2])
         d += ((random.randrange(10000) - 5000) / 15000.)
         dict[dir2] = d
-print("Histogram of taxonomy distances: %s" %
-      ', '.join(map(str, histTaxDist)))
-print("COG distannce distribution %s" % ', '.join(map(str, [(np.mean(x),
-        np.std(x)) for x in cogDistLists])))
 
-print("Comparing taxonomy and common COG distances...")
-distList = []
-distDict = {}
-for dir in validDirSet:
-    taxDict = taxDist[dir]
-    cogDict = cogDist[dir]
-    taxList = [taxDict[x] for x in validDirSet]
-    #weights = [1/(x+1.) for x in taxList]
-    cogList = [cogDict[x] for x in validDirSet]
-    d = calculateWeightedKendall(cogList, taxList, weights)
-    distList.append(d)
-    distDict[dir] = d
+print("Got 3 dictionaries: cogDist len %d, cogWeights len %d, "
+    "taxDist len %d " % (len(cogDist), len(cogWeights), len(taxDist)))
 
-print("Dist correlation: mean %f std %f" % (np.mean(distList), np.std(
-    distList)))
+cogDistMat = DistanceMatrix(doubleDict=cogDist)
+print("Got cogDistMat")
+cogWeightsMat = DistanceMatrix(doubleDict=cogWeights)
+print("Got cogWeightsMat")
+taxDistMat = DistanceMatrix(doubleDict=taxDist)
+print("Got taxDistMat")
 
-print("Negative correlations:")
-sortedDistDict = sorted(distDict.items(), key=operator.itemgetter(1))
-for dir, dist in sortedDistDict:
-    if dist < 0:
-        print("Dir %s dist %d" % (dir, dist))
+mean, std, _ = distanceMatrixCorrelation(taxDistMat, cogDistMat,
+                                         cogWeightsMat)
+print("Weighted correlation: mean %f std %f" % (mean, std))
+mean, std, _ = distanceMatrixCorrelation(taxDistMat, cogDistMat, None)
+print("Unweighted correlation: mean %f std %f" % (mean, std))
+
 
 
 

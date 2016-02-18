@@ -1,7 +1,6 @@
 # This file builds additional files, not needed by this project,
 # but requested by other folks to create files for them to investigate.
 
-from import_proxy import *
 from filedefs import *
 
 with open(PROK_TAXA_DICT(), 'r') as fdict:

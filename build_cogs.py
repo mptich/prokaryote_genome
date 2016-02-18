@@ -1,9 +1,10 @@
 # This module builds set of CogInst, and Cog objects
 
 import re
-from import_proxy import *
 from filedefs import *
 import random
+from shared.pyutils.utils import *
+from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 
 cogPat = re.compile(r'^COG.*')
 

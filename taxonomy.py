@@ -2,8 +2,8 @@
 # it for
 
 import re
-from import_proxy import *
 from filedefs import *
+from shared.pyutils.utils import *
 
 class TaxonomyParser(UtilObject):
 

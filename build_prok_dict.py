@@ -1,8 +1,9 @@
 # This module builds PROK_GENOME_DICT() file (see utils.py)
 
 import glob
-from import_proxy import *
 from filedefs import *
+from shared.pyutils.utils import *
+from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 
 # Dictionary dir -> ProkGenome. Saved into PROK_GENOME_DICT file.
 prokGenomeDict = {}

@@ -2,7 +2,8 @@
 
 import re
 import numpy
-from import_proxy import *
+import os
+from shared.pyutils.utils import *
 
 class ProkDna(UtilObject):
     """

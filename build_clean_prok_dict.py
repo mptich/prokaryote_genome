@@ -1,8 +1,9 @@
 # This module builds cleaned prokaryot dictionary: directory -> ProkDnaSet
 
-from import_proxy import *
+import json
 from taxonomy import TaxonomyParser, Taxa
 from filedefs import *
+from shared.pyutils.utils import *
 
 cleanDict = {}
 
