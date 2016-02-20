@@ -27,9 +27,32 @@ genomeDict = {}
 # Use multifile to append files
 multiFile = UtilMultiFile(3000, "a")
 
+# Only proteins containing these letters are taken into consideration
+validAminoAcidSet = set("ARNDCQEGHILKMFPSTWYVBZ")
+
+# IDs of COGs which have bad protein strings
+idsOfBadProteins = set()
+
+# IDs of COGs with missing protein strings
+idsOfMissingProteins = set()
+
 # Files with COG protein sequences
 def cogFastaFileName(nameBase):
     return config.WORK_FILES_DIR() + nameBase + ".fa"
+
+# Checks protein string for validity
+def checkProtein(protein):
+    return (set(protein) <= validAminoAcidSet)
+
+def addProteinToDict(cogProteinDict, pid, protein, faaFileName, lineno):
+    if not pid:
+        return
+    if pid and checkProtein(protein):
+        cogProteinDict[pid] = protein
+    else:
+        print("File %s line %d: ignoring protein %s id %s" % (
+            faaFileName, lineno, protein, pid))
+        idsOfBadProteins.add(pid)
 
 # Returns a set of COGs contaned in this prokDna
 def getCogSet(prokDna):
@@ -41,13 +64,12 @@ def getCogSet(prokDna):
     pid = None
     faaFileName = prokDna.getFullPttName().rpartition('.')[0] + ".faa"
     with open(faaFileName, 'r') as ffaa:
-        for l in ffaa:
+        for lineno, l in enumerate(ffaa, start = 1):
             l = l.strip()
             ll = l.split('|')
-            if len(ll) == 5:
-                # Protein descriptor
-                if pid:
-                    cogProteinDict[pid] = protein
+            if len(ll) >= 5:
+                addProteinToDict(cogProteinDict, pid, protein, faaFileName,
+                                 lineno)
                 pid = ll[1]
                 protein = ""
                 continue
@@ -59,8 +81,7 @@ def getCogSet(prokDna):
             print("File %s unknown line %s" % (faaFileName, l))
             pid = None
 
-    if pid:
-        cogProteinDict[pid] = protein
+    addProteinToDict(cogProteinDict, pid, protein, faaFileName, lineno)
 
     return buildCogSet(prokDna, cogProteinDict)
 
@@ -69,14 +90,10 @@ def buildCogSet(prokDna, cogProteinDict):
 
     with open(prokDna.getFullPttName(), 'r') as fptt:
         # Skip first 3 lines
-        lineCount = 0
-        for _ in fptt:
-            lineCount += 1
-            if lineCount == 3:
-                break
+        for lineno, l in enumerate(fptt, start = 1):
+            if lineno <= 3:
+                continue
 
-        for l in fptt:
-            lineCount += 1
             l = l.strip()
             ll = l.split('\t')
             if len(ll) != 9:
@@ -95,19 +112,24 @@ def buildCogSet(prokDna, cogProteinDict):
                 cogPid = ll[3]
             except:
                 print("Cant't parse file %s line %u" % (
-                    prokDna.getFullPttName(), lineCount))
+                    prokDna.getFullPttName(), lineno))
+                continue
+
+            if cogPid in idsOfBadProteins:
+                # Protein has been malformatted
                 continue
 
             if cogPid not in cogProteinDict:
                 print("COG from file %s line %u pid %s not in FAA file" % (
-                    prokDna.getFullPttName(), lineCount, cogPid))
+                    prokDna.getFullPttName(), lineno, cogPid))
+                idsOfMissingProteins.add(cogPid)
                 continue
 
             faFileName = cogFastaFileName(cogName)
             faLineNumber = faFileDict.get(faFileName, 1)
 
             cogInst = CogInst(name = cogName, chrom = prokDna.key(), pttLine =
-                lineCount, strand = cogStrand, start = cogStart, len = cogLen,
+                lineno, strand = cogStrand, start = cogStart, len = cogLen,
                 faLine = faLineNumber)
             cogInstSet.add(cogInst)
 
@@ -186,5 +208,8 @@ taxaSet = set(taxaDict.keys())
 genomeWithCogsSet = set(genomeDict.keys())
 print("%d genomes with both taxa and COGs" % len(set.intersection(taxaSet,
     genomeWithCogsSet)))
+
+print("Bad proteins %d, missing proteins %d" % (len(idsOfBadProteins),
+                                                len(idsOfMissingProteins)))
 
 
