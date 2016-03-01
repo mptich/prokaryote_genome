@@ -12,6 +12,9 @@ import random
 import math
 from shared.pyutils.distance_matrix import *
 
+# Set all COG names
+cogNameSet = set()
+
 def commonCogsDist(cs1, cs2):
     """
     Calculates distances based on common COGs
@@ -43,6 +46,43 @@ def commonCogsWeightReverse(cs1, cs2):
     """
     return 1. / math.sqrt(float(len(cs1) + 1) * (len(cs2) + 1))
 
+def commonCogsDistNonRand(cs1, cs2):
+    """
+    Calculates weight of the distance based on common COGs
+    :param cs1: 1st set of cog names
+    :param cs2: 2nd set of cog names
+    :return: Weight takes into account only non-random common
+            COGs count. Math behind this calculation is described in the
+            following article:
+            TODO
+            Equation is as follows:
+            if Na - # of COGs in genome A (len(cs1)),
+            Nb - number of COGs in genome B (len(cs2)),
+            C - measured number of common COGs,
+            T - total number of considered COGs,
+            then
+            EC = (T*C - Na*Nb) / (T+C-Na-Nb) - expected # of common COGs (
+            take it as 0 if EC < 0), and the distance between genomes will be
+            d = (Na*Nb) / ((EC+1)^2)
+    """
+    commonSet = cs1 & cs2
+    c = float(len(commonSet))
+    na = float(len(cs1))
+    nb = float(len(cs2))
+    t = float(len(cogNameSet))
+    assert(t >= na)
+    assert(t >= nb)
+    denom = t + c - na - nb
+    if denom:
+        ec = (t * c - na * nb) / denom
+    else:
+        ec = -1.
+    if ec < 0.:
+        ec = 0.
+    ec += 1.
+    return (na * nb) / (ec * ec)
+
+
 print("reading COG instance set...")
 with open(COG_INST_SET(), 'r') as fset:
     cogSet = json.load(fset, object_hook = UtilJSONDecoderDictToObj)
@@ -50,16 +90,11 @@ print("Read %d COG instances" % len(cogSet))
 
 print ("processing COG instance set...")
 cogDict = {}
-cogCounter = 0 # converting name -> number for speed
-cogNameToIdDict = {}
 for cogInst in cogSet:
     dir = cogInst.getDir()
     cs = cogDict.get(dir, set())
-    name = cogInst.name
-    if name not in cogNameToIdDict:
-        cogNameToIdDict[name] = cogCounter
-        cogCounter += 1
-    cs.add(cogNameToIdDict[name])
+    name = cogInst.getName()
+    cs.add(name)
     cogDict[dir] = cs
 print("Got %d organisms with COGS" % len(cogDict))
 
@@ -74,15 +109,33 @@ for dir in taxaDict:
         validDirSet.add(dir)
 print("Valid set contains %d organisms" % len(validDirSet))
 
+# Build COG name set so it includes only COG from genomes in validDirSet
+for dir in validDirSet:
+    cogNameSet |= cogDict[dir]
+print("Got %d total COGs in valid genomes" % len(cogNameSet))
+
+# Building random distance for comparison
+print("Building random distances...")
+randDist = {}
+for dir1 in validDirSet:
+    dictDirRandDist = {}
+    randDist[dir1] = dictDirRandDist
+    for dir2 in validDirSet:
+        dictDirRandDist[dir2] = random.random()
+
 print("Building COG distances...")
 cogDist = {}
+cogDistNonRand = {}
 cogWeights = {}
 cogWeightsReverse = {}
-for dir1, cs1 in cogDict.items():
+for ordinal, (dir1, cs1) in enumerate(cogDict.items(), start = 1):
     if dir1 not in validDirSet:
         continue
+    print("\r%d. %s" % (ordinal, dir1)),
     dictDirCogDist = {}
     cogDist[dir1] = dictDirCogDist
+    dictDirCogDistNonRand = {}
+    cogDistNonRand[dir1] = dictDirCogDistNonRand
     dictDirWeights = {}
     cogWeights[dir1] = dictDirWeights
     dictDirWeightsReverse = {}
@@ -91,10 +144,11 @@ for dir1, cs1 in cogDict.items():
         if dir2 not in validDirSet:
             continue
         dictDirCogDist[dir2] = commonCogsDist(cs1, cs2)
+        dictDirCogDistNonRand[dir2] = commonCogsDistNonRand(cs1, cs2)
         dictDirWeights[dir2] = commonCogsWeight(cs1, cs2)
         dictDirWeightsReverse[dir2] = commonCogsWeightReverse(cs1, cs2)
 
-print("Building Taxonomy distances...")
+print("\nBuilding Taxonomy distances...")
 taxDist = {}
 for dir1, taxa1 in taxaDict.items():
     if dir1 not in validDirSet:
@@ -105,29 +159,45 @@ for dir1, taxa1 in taxaDict.items():
         if dir2 not in validDirSet:
             continue
         d = taxa1.distance(taxa2)
-        d += ((random.randrange(10000) - 5000) / 15000.)
+        #JUSTATEMP
+        #d += ((random.randrange(10000) - 5000) / 15000.)
         dict[dir2] = d
 
 cogDistMat = DistanceMatrix(doubleDict=cogDist)
 print("Got cogDistMat")
+cogDistNonRandMat = DistanceMatrix(doubleDict=cogDistNonRand)
+print("Got cogDistNonRandMat")
 cogWeightsMat = DistanceMatrix(doubleDict=cogWeights)
 print("Got cogWeightsMat")
 cogWeightsReverseMat = DistanceMatrix(doubleDict=cogWeightsReverse)
 print("Got cogWeightsReverseMat")
 taxDistMat = DistanceMatrix(doubleDict=taxDist)
 print("Got taxDistMat")
+randDistMat = DistanceMatrix(doubleDict=randDist)
+print("Got randDistMat")
 
 mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat,
                                          cogWeightsMat)
 print("Weighted correlation: mean %f std %f" % (mean, std))
 print "Worst correlations: ", corrList[:10]
+
 mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat,
                                          cogWeightsReverseMat)
 print("Reverse weighted correlation: mean %f std %f" % (mean, std))
 print "Worst correlations: ", corrList[:10]
+
 mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat, None)
 print("Unweighted correlation: mean %f std %f" % (mean, std))
 print "Worst correlations: ", corrList[:10]
+
+mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistNonRandMat,
+                                                None)
+print("Unweighted non random correlation: mean %f std %f" % (mean, std))
+print "Worst correlations: ", corrList[:10]
+
+mean, std, corrList = distanceMatrixCorrelation(taxDistMat, randDistMat,
+                                                None)
+print("Unweighted totally random correlation: mean %f std %f" % (mean, std))
 
 
 
