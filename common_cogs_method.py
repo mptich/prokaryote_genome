@@ -10,6 +10,7 @@
 from taxonomy import *
 import random
 import math
+from collections import defaultdict as DefDict
 from shared.pyutils.distance_matrix import *
 
 # Set all COG names
@@ -116,52 +117,38 @@ print("Got %d total COGs in valid genomes" % len(cogNameSet))
 
 # Building random distance for comparison
 print("Building random distances...")
-randDist = {}
+randDist = DefDict(dict)
 for dir1 in validDirSet:
-    dictDirRandDist = {}
-    randDist[dir1] = dictDirRandDist
     for dir2 in validDirSet:
-        dictDirRandDist[dir2] = random.random()
+        randDist[dir1][dir2] = random.random()
 
 print("Building COG distances...")
-cogDist = {}
-cogDistNonRand = {}
-cogWeights = {}
-cogWeightsReverse = {}
+cogDist = DefDict(dict)
+cogDistNonRand = DefDict(dict)
+cogWeights = DefDict(dict)
+cogWeightsReverse = DefDict(dict)
 for ordinal, (dir1, cs1) in enumerate(cogDict.items(), start = 1):
     if dir1 not in validDirSet:
         continue
     print("\r%d. %s" % (ordinal, dir1)),
-    dictDirCogDist = {}
-    cogDist[dir1] = dictDirCogDist
-    dictDirCogDistNonRand = {}
-    cogDistNonRand[dir1] = dictDirCogDistNonRand
-    dictDirWeights = {}
-    cogWeights[dir1] = dictDirWeights
-    dictDirWeightsReverse = {}
-    cogWeightsReverse[dir1] = dictDirWeightsReverse
     for dir2, cs2 in cogDict.items():
         if dir2 not in validDirSet:
             continue
-        dictDirCogDist[dir2] = commonCogsDist(cs1, cs2)
-        dictDirCogDistNonRand[dir2] = commonCogsDistNonRand(cs1, cs2)
-        dictDirWeights[dir2] = commonCogsWeight(cs1, cs2)
-        dictDirWeightsReverse[dir2] = commonCogsWeightReverse(cs1, cs2)
+        cogDist[dir1][dir2] = commonCogsDist(cs1, cs2)
+        cogDistNonRand[dir1][dir2] = commonCogsDistNonRand(cs1, cs2)
+        cogWeights[dir1][dir2] = commonCogsWeight(cs1, cs2)
+        cogWeightsReverse[dir1][dir2] = commonCogsWeightReverse(cs1, cs2)
 
 print("\nBuilding Taxonomy distances...")
-taxDist = {}
+taxDist = DefDict(dict)
 for dir1, taxa1 in taxaDict.items():
     if dir1 not in validDirSet:
         continue
-    dict = {}
-    taxDist[dir1] = dict
     for dir2, taxa2 in taxaDict.items():
         if dir2 not in validDirSet:
             continue
         d = taxa1.distance(taxa2)
-        #JUSTATEMP
-        #d += ((random.randrange(10000) - 5000) / 15000.)
-        dict[dir2] = d
+        taxDist[dir1][dir2] = d
 
 cogDistMat = DistanceMatrix(doubleDict=cogDist)
 print("Got cogDistMat")
@@ -176,27 +163,33 @@ print("Got taxDistMat")
 randDistMat = DistanceMatrix(doubleDict=randDist)
 print("Got randDistMat")
 
-mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat,
-                                         cogWeightsMat)
+mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat, cogDistMat,
+                                         cogWeightsMat, True)
 print("Weighted correlation: mean %f std %f" % (mean, std))
-print "Worst correlations: ", corrList[:10]
+print "Components ", comp
+print "Worst correlations: ", corrList[:10], "\n"
 
-mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat,
-                                         cogWeightsReverseMat)
+mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat, cogDistMat,
+                                         cogWeightsReverseMat, True)
 print("Reverse weighted correlation: mean %f std %f" % (mean, std))
-print "Worst correlations: ", corrList[:10]
+print "Components ", comp
+print "Worst correlations: ", corrList[:10], "\n"
 
-mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistMat, None)
+mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat, cogDistMat,
+                                                None, True)
 print("Unweighted correlation: mean %f std %f" % (mean, std))
-print "Worst correlations: ", corrList[:10]
+print "Components ", comp
+print "Worst correlations: ", corrList[:10], "\n"
 
-mean, std, corrList = distanceMatrixCorrelation(taxDistMat, cogDistNonRandMat,
-                                                None)
+mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat,
+                                                  cogDistNonRandMat,
+                                                None, True)
 print("Unweighted non random correlation: mean %f std %f" % (mean, std))
-print "Worst correlations: ", corrList[:10]
+print "Components ", comp
+print "Worst correlations: ", corrList[:10], "\n"
 
-mean, std, corrList = distanceMatrixCorrelation(taxDistMat, randDistMat,
-                                                None)
+mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat, randDistMat,
+                                                None, False)
 print("Unweighted totally random correlation: mean %f std %f" % (mean, std))
 
 
