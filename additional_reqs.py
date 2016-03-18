@@ -27,9 +27,9 @@ print("Processing cogInstList...")
 cogInstList = []
 dirExceptions = set()
 for cogInst in cogSet:
-    dir = cogInst.getDir()
+    dir = cogInst.dir
     if dir in dirDict:
-        cogInstList.append((dirDict[dir], cogInst.getName(), cogInst.getLen()))
+        cogInstList.append((dirDict[dir], cogInst.name, cogInst.len))
     else:
         if dir not in dirExceptions:
             print("Unmatched dir %s" % dir)

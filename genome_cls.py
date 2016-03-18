@@ -11,7 +11,7 @@ class ProkDna(UtilObject):
     Attributes:
     ptt: PTT file name
     fullPttName: fully qualified PTT file name
-    name: name of the DNA described in the PTT file
+    _name: name of the DNA described in the PTT file
     chr: chromosome index, 0 based (always 0 for phages and plasmids)
     strain: name of the strain (main if no strain name; None for phages and
         plasmids)
@@ -23,6 +23,7 @@ class ProkDna(UtilObject):
     # Legitimate chromosome representation (might have no name)
     patChromosome = re.compile(r'(.*)(\bchromosome\b(?:\s+([^\s,]+))?)(.*)')
     chromosomeXlator = {"i":"1", "ii":"2", "iii":"3"}
+    validChromosomes = ["1", "2", "3"]
 
     # Phage representation (might have no name)
     patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s,]+))?)(.*)')
@@ -50,6 +51,16 @@ class ProkDna(UtilObject):
             self.chr = ProkDna.chromosomeXlator[self.chr]
 
     @staticmethod
+    def chromosomeStrToNumber(chr):
+        # Returns -1 if this is not a valid chromosome number string
+        if chr in ProkDna.chromosomeXlator:
+            chr = ProkDna.chromosomeXlator[chr]
+        if chr in ProkDna.validChromosomes:
+            return int(chr)
+        else:
+            return -1
+
+    @staticmethod
     def removeQuotes(s):
         miter = ProkDna.patQuotedText.finditer(s)
         # Accumulated shift, because replacement string might be of
@@ -64,7 +75,8 @@ class ProkDna(UtilObject):
             s = s[:startPos] + replStr + s[endPos:]
         return s
 
-    def processPattern(self, name, pattern, default):
+    @staticmethod
+    def processPattern(name, pattern, default = None):
         # Extracts matched feature, and returns updated DNA name
         # excluding the pattern, and teh feature value (or default)
         m = pattern.match(name)
@@ -77,6 +89,12 @@ class ProkDna(UtilObject):
         name = ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
         return (ProkDna.patWhiteSpaceComma.sub(',', name), featureName)
 
+    @staticmethod
+    def removeStrain(name):
+        name, _ = ProkDna.processPattern(name, ProkDna.patStrain1)
+        name, _ = ProkDna.processPattern(name, ProkDna.patStrain2)
+        return name
+
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
             return
@@ -87,9 +105,9 @@ class ProkDna(UtilObject):
             # Take the first line
             for l in f:
                 # Get DNA name
-                self.name = ProkDna.removeQuotes(l.strip().lower())
-                self.name = ProkDna.patWhiteSpace.sub(' ', self.name)
-                self.name = ProkDna.patCompleteChromosome.sub('', self.name)
+                self._name = ProkDna.removeQuotes(l.strip().lower())
+                self._name = ProkDna.patWhiteSpace.sub(' ', self._name)
+                self._name = ProkDna.patCompleteChromosome.sub('', self._name)
                 break
 
         self.chr = None
@@ -98,37 +116,37 @@ class ProkDna(UtilObject):
         self.phage = None
         self.plasmid = None
 
-        if ProkDna.patClone.match(self.name):
+        if ProkDna.patClone.match(self._name):
             self.isClone = True
             return
 
-        self.name, self.phage = self.processPattern(self.name,
+        self._name, self.phage = self.processPattern(self._name,
                                                     ProkDna.patPhage, None)
-        self.name, self.plasmid = self.processPattern(self.name,
+        self._name, self.plasmid = self.processPattern(self._name,
                                                   ProkDna.patPlasmid, None)
         if self.plasmid or self.phage:
             return
 
-        self.name, self.chr = self.processPattern(self.name,
+        self._name, self.chr = self.processPattern(self._name,
                                                ProkDna.patChromosome, "1")
         self.xlateChromosomeStr()
         # Some names have an extra chromosome string, remove it
-        self.name, _ = self.processPattern(self.name, ProkDna.patChromosome,
+        self._name, _ = self.processPattern(self._name, ProkDna.patChromosome,
                                            None)
 
         defaultStrainName = "MAIN"
-        self.name, self.strain = self.processPattern(self.name,
+        self._name, self.strain = self.processPattern(self._name,
                                                     ProkDna.patStrain1,
                                                     defaultStrainName)
         if self.strain == defaultStrainName:
             # Try another pattern
-            self.name, self.strain = self.processPattern(self.name,
+            self._name, self.strain = self.processPattern(self._name,
                                                         ProkDna.patStrain2,
                                                         defaultStrainName)
 
         # Leave only the name up to the comma
-        self.name = ProkDna.patWhiteSpaceComma.sub(',', self.name)
-        self.name = self.name.split(',', 1)[0]
+        self._name = ProkDna.patWhiteSpaceComma.sub(',', self._name)
+        self._name = self._name.split(',', 1)[0]
 
 
     def getPtt(self):
@@ -140,11 +158,12 @@ class ProkDna(UtilObject):
     def getFullPttName(self):
         return self.fullPttName
 
-    def getDir(self):
+    @property
+    def dir(self):
         return self.fullPttName.split('/')[-2]
 
     def key(self):
-        return self.getPttBase() + ":" + self.getDir()
+        return self.getPttBase() + ":" + self.dir
 
     @staticmethod
     def getDirFromKey(key):
@@ -152,8 +171,9 @@ class ProkDna(UtilObject):
         assert(len(keyComponents) == 2)
         return keyComponents[1]
 
-    def getName(self):
-        return self.name
+    @property
+    def name(self):
+        return self._name
 
     def getChromId(self):
         return self.chr
@@ -177,7 +197,7 @@ class ProkDnaSet(UtilObject):
     Attributes:
         strain - strain of the main DNA
         dct - a dictionary of chromosome id -> ProkDna mappings
-        name - offcial name of this strain, from the first line of the PTT
+        _name - offcial name of this strain, from the first line of the PTT
             file
     """
 
@@ -185,9 +205,9 @@ class ProkDnaSet(UtilObject):
         if self.buildFromDict(kwargs):
             return
         self.strain = None
-        self.name = None
+        self._name = None
         self.dct = {}
-        self.dir = None
+        self._dir = None
 
     def add(self, prokDna):
         strain = prokDna.getStrain()
@@ -196,20 +216,20 @@ class ProkDnaSet(UtilObject):
         if self.strain != strain:
             raise UtilError("ProkDnaSet %s and ProkDna %s got strain "
                               "mismatch" % (self, prokDna))
-        if not self.name:
-            self.name = prokDna.getName()
-        if self.name != prokDna.getName():
+        if not self._name:
+            self._name = prokDna.name
+        if self._name != prokDna.name:
             raise UtilError("Name mismatch in ProkDnaSet: %s vs %s, ProkDna "
                             "file %s" %
-                            (self.name, prokDna.getName(),
+                            (self._name, prokDna.name,
                              prokDna.getFullPttName()))
 
-        if not self.dir:
-            self.dir = prokDna.getDir()
-        if self.dir != prokDna.getDir():
+        if not self._dir:
+            self._dir = prokDna.dir
+        if self._dir != prokDna.dir:
             raise UtilError("Directory mismatch in ProkDnaSet: %s vs %s, "
                             "ProkDna file %s" %
-                            (self.dir, prokDna.getDir(),
+                            (self._dir, prokDna.dir,
                              prokDna.getFullPttName()))
 
         chromId = prokDna.getChromId()
@@ -218,17 +238,19 @@ class ProkDnaSet(UtilObject):
                               "chromosome" % (self, prokDna))
         self.dct[chromId] = prokDna
 
-    def getName(self):
-        return self.name
+    @property
+    def name(self):
+        return self._name
 
-    def getDir(self):
-        return self.dir
+    @property
+    def dir(self):
+        return self._dir
 
     def getStrain(self):
         return self.strain
 
     def key(self):
-        return self.strain + ":" + self.dir
+        return self.strain + ":" + self._dir
 
     def getChromCount(self):
         return len(self.dct)
@@ -244,7 +266,7 @@ class ProkGenome(UtilObject):
     """
     Describes full organism's genome
     Attributes:
-        dir - directory of this genome
+        _dir - directory of this genome
         chroms - DNA from chromosomes, a dictionary of <strain> -> ProkDnaSet
         phages - list of ProkDna corresponding to phages
         plasmids - list of ProkDna corresponding to plasmids
@@ -254,7 +276,7 @@ class ProkGenome(UtilObject):
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
             return
-        self.dir = kwargs["dir"]
+        self._dir = kwargs["_dir"]
         self.chroms = {}
         self.phages = []
         self.plasmids = []
@@ -297,12 +319,12 @@ class ProkGenome(UtilObject):
                     if chromIdSet != set(prokDnaSet.getChromIdList()):
                         raise UtilError("ProkDnaSet %s: inconsistent "
                                           "chromosome names" % self.chroms)
-
-    def getDir(self):
-        return self.dir
+    @property
+    def dir(self):
+        return self._dir
 
     def key(self):
-        return self.dir
+        return self._dir
 
     def getStrainList(self):
         return self.chroms.keys()
@@ -333,12 +355,12 @@ class CogInst(UtilObject):
     """
     Class describing a prokaryote COG instance.
     Attributes:
-        name - name of the COG instance
+        _name - name of the COG instance
         chrom - ProkDna.key for this COG instance
         pttLine - line in the PTT file
         strand - strand of the chromosome
         start - strating position in the chromosome
-        len - length, in terms of proteins
+        _len - length, in terms of proteins
         faLine - chain of aminiacids in the protein, as a line number in
             the <COGNAME>.fa file in the work files directory
     """
@@ -355,24 +377,27 @@ class CogInst(UtilObject):
     def getDirFromKey(key):
         return ProkDna.getDirFromKey(key.split(':', 1)[1])
 
-    def getDir(self):
+    @property
+    def dir(self):
         return ProkDna.getDirFromKey(self.chrom)
 
-    def getName(self):
-        return self.name
+    @property
+    def name(self):
+        return self._name
 
     def getChrom(self):
         return self.chrom
 
-    def getLen(self):
-        return self.len
+    @property
+    def len(self):
+        return self._len
 
 
 class Cog(UtilObject):
     """
     COG describing all COG instances
     Attributes:
-        name - name of the COG
+        _name - name of the COG
         instCount - how many instances
         genCount - in how many genomes
         meanInstPerGen - float, mean of instances per genome
@@ -383,7 +408,7 @@ class Cog(UtilObject):
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
             return
-        self.name = kwargs["name"]
+        self._name = kwargs["_name"]
         self.instCount = 0
         self.genCount = None
         self.meanInstPerGen = 0.
@@ -391,7 +416,7 @@ class Cog(UtilObject):
         self.tempDict = {}
 
     def addCogInst(self, cogInst):
-        assert(self.name == cogInst.getName())
+        assert(self._name == cogInst.name)
         dir = CogInst.getDirFromKey(cogInst.key())
         self.tempDict[dir] = self.tempDict.get(dir, 0) + 1
         self.instCount += 1
@@ -411,7 +436,11 @@ class Cog(UtilObject):
         return self.genCount
 
     def key(self):
-        return self.name
+        return self._name
+
+    @property
+    def name(self):
+        return self._name
 
 
 

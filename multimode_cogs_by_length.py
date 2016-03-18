@@ -69,9 +69,9 @@ if __name__ == "__main__":
 
     cogLenDict = {}
     for cogInst in cogInstSet:
-        l = cogLenDict.get(cogInst.getName(), [])
-        l.append(cogInst.getLen())
-        cogLenDict[cogInst.getName()] = l
+        l = cogLenDict.get(cogInst.name, [])
+        l.append(cogInst.len)
+        cogLenDict[cogInst.name] = l
 
     for cogName, lenList in cogLenDict.items():
         print("Processing %s" % cogName)

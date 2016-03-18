@@ -14,7 +14,7 @@ prokDnaDict = {}
 inputCount = 0
 
 def newProkGenome(dir):
-    prokGenome = ProkGenome(dir = dir)
+    prokGenome = ProkGenome(_dir = dir)
     fullDir = config.PROKARYOTS_DIR() + dir + '/'
     pttFiles = glob.glob(fullDir + "*.ptt")
     for pttFileName in pttFiles:

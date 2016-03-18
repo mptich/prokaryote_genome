@@ -4,6 +4,7 @@
 import re
 from filedefs import *
 from shared.pyutils.utils import *
+from genome_cls import *
 
 class TaxonomyParser(UtilObject):
 
@@ -26,11 +27,11 @@ class TaxonomyParser(UtilObject):
                 if len(ll) != 7:
                     continue
                 taxa = Taxa(domain=ll[1], phylum=ll[3], cls=ll[4], \
-                        name = ll[2], order = ll[5], family=ll[6])
+                        _name = ll[2], order = ll[5], family=ll[6])
                 self.taxaNamesDict[ll[2]] = taxa
 
     def addProkDnaSet(self, prokDnaSet):
-        name = prokDnaSet.getName()
+        name = prokDnaSet.name
         self.nameDict[name] = prokDnaSet
         # Break the name into the terms
         nameList = re.split(' |,', name)
@@ -42,7 +43,13 @@ class TaxonomyParser(UtilObject):
     def process(self):
         # We will match organisms by the best name match
         for orgName, taxa in self.taxaNamesDict.items():
+            # Remove strain if it is present
+            orgName = ProkDna.removeStrain(orgName)
             termList = [x for x in orgName.split(' ') if x != ""]
+            # If the last term looks like a chromosome number - remove it
+            if termList and \
+                    (ProkDna.chromosomeStrToNumber(termList[-1]) != -1):
+                termList = termList[:-1]
             if len(termList) < 2:
                 print("Taxonomy: organism name %s is too short" % orgName)
                 continue
@@ -69,7 +76,7 @@ class TaxonomyParser(UtilObject):
 
                 for d in shortestNameDictList:
                     prokDnaSet = self.nameDict[d["name"]]
-                    self.taxaDict[prokDnaSet.getDir()] = taxa
+                    self.taxaDict[prokDnaSet.dir] = taxa
 
         # Dump taxa dixionary and unmatched Taxa organism names
         with open(PROK_TAXA_DICT(), 'w') as f:
@@ -78,6 +85,12 @@ class TaxonomyParser(UtilObject):
         with open(UNMATCHED_TAXA_SET(), 'w') as f:
             json.dump(self.unmatchedSet, f, cls = UtilJSONEncoder,
                       sort_keys = True, indent = 4)
+        # Dump procDna directories that has not matched anything in taxonomy
+        with open(UNMATCHED_PROC_DNA_SET(), 'w') as f:
+            prokDnaDirSet = set([x.dir for x in self.nameDict.values()])
+            matchedProkDnaDirSet = set(self.taxaDict.keys())
+            json.dump(prokDnaDirSet - matchedProkDnaDirSet, f,
+                      cls = UtilJSONEncoder, sort_keys=True, indent = 4)
 
     def stats(self):
         return ("Taxonomy size %d, out of them unmatched %d; "
@@ -119,5 +132,9 @@ class Taxa(UtilObject):
     @staticmethod
     def maxDistance():
         return 5
+
+    @property
+    def name(self):
+        return self._name
 
 

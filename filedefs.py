@@ -43,4 +43,8 @@ def PROK_TAXA_DICT():
 def UNMATCHED_TAXA_SET():
     return config.WORK_FILES_DIR() + "unmatched_taxa_set.json"
 
+# Set of cleaned ProkDna directories that have not matched anything in
+# taxonomy
+def UNMATCHED_PROC_DNA_SET():
+    return config.WORK_FILES_DIR() + "unmatched_proc_dna_set.json"
 

@@ -1,4 +1,5 @@
-# This module builds cleaned prokaryot dictionary: directory -> ProkDnaSet
+# This module builds cleaned prokaryote dictionary:
+# directory -> ProkDnaSet
 
 import json
 from taxonomy import TaxonomyParser, Taxa

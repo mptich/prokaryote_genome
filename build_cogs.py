@@ -128,8 +128,8 @@ def buildCogSet(prokDna, cogProteinDict):
             faFileName = cogFastaFileName(cogName)
             faLineNumber = faFileDict.get(faFileName, 1)
 
-            cogInst = CogInst(name = cogName, chrom = prokDna.key(), pttLine =
-                lineno, strand = cogStrand, start = cogStart, len = cogLen,
+            cogInst = CogInst(_name = cogName, chrom = prokDna.key(), pttLine =
+                lineno, strand = cogStrand, start = cogStart, _len = cogLen,
                 faLine = faLineNumber)
             cogInstSet.add(cogInst)
 
@@ -156,9 +156,9 @@ print ("MultiFile stat: %s" % multiFile.getStats())
 # Now build fullCogDict
 print("Building fullCogDict...")
 for cogInst in fullCogInstSet:
-    cog = fullCogDict.get(cogInst.getName(), Cog(name=cogInst.getName()))
+    cog = fullCogDict.get(cogInst.name, Cog(_name=cogInst.name))
     cog.addCogInst(cogInst)
-    fullCogDict[cogInst.getName()] = cog
+    fullCogDict[cogInst.name] = cog
 
 # Make a sample subset of COGs, for debugging
 print("Building sampleCogInstSet...")
@@ -167,7 +167,7 @@ for cogName in fullCogDict.keys():
     if random.randrange(40) == 0:
         sampleCogNames.add(cogName)
 for cogInst in fullCogInstSet:
-    if cogInst.getName() in sampleCogNames:
+    if cogInst.name in sampleCogNames:
         sampleCogInstSet.add(cogInst)
 
 cogNamesList = fullCogDict.items()
