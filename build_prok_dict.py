@@ -35,15 +35,11 @@ with open(PROKARYOT_DIRS_FILE(), 'r') as fdirs:
             continue
         prokGenomeDict[dir] = prokGenome
 
-with open(PROK_GENOME_DICT(), 'w') as fdict:
-    json.dump(prokGenomeDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
-              indent = 4)
+UtilStore(prokGenomeDict, PROK_GENOME_DICT())
 
 print("Input %d entries, output %d entries" % (inputCount,
                                                len(prokGenomeDict)))
 
-with open(PROK_DNA_DICT(), 'w') as fdict:
-    json.dump(prokDnaDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
-              indent = 4)
+UtilStore(prokDnaDict, PROK_DNA_DICT())
 
 print("ProkDna dictionary: %d entries" % len(prokDnaDict))

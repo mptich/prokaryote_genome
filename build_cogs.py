@@ -9,10 +9,10 @@ from genome_cls import ProkDna, ProkDnaSet, ProkGenome, CogInst, Cog
 cogPat = re.compile(r'^COG.*')
 
 # Set of CogInst
-fullCogInstSet = set()
+fullCogInstList = []
 
-# Sample set of CogInst, for debugging
-sampleCogInstSet = set()
+# Sample list of CogInst, for debugging
+sampleCogInstList = []
 
 # Dictionary mapping COG name -> Cog
 fullCogDict = {}
@@ -25,7 +25,7 @@ faFileDict = {}
 genomeDict = {}
 
 # Use multifile to append files
-multiFile = UtilMultiFile(3000, "a")
+multiFile = UtilMultiFile(100, "a")
 
 # Only proteins containing these letters are taken into consideration
 validAminoAcidSet = set("ARNDCQEGHILKMFPSTWYVBZ")
@@ -140,35 +140,34 @@ def buildCogSet(prokDna, cogProteinDict):
     return cogInstSet
 
 
-with open(PROK_CLEAN_GENOME_DICT(), 'r') as fdict:
-    masterDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+masterDict = UtilLoad(PROK_CLEAN_GENOME_DICT())
 
 for d, prokDnaSet in masterDict.iteritems():
     for cid in prokDnaSet.getChromIdList():
         prokDna = prokDnaSet.getChrom(cid)
         cogInstSet = getCogSet(prokDna)
         if cogInstSet:
-            fullCogInstSet.update(cogInstSet)
+            fullCogInstList += list(cogInstSet)
 
 multiFile.closeAll()
 print ("MultiFile stat: %s" % multiFile.getStats())
 
 # Now build fullCogDict
 print("Building fullCogDict...")
-for cogInst in fullCogInstSet:
+for cogInst in fullCogInstList:
     cog = fullCogDict.get(cogInst.name, Cog(_name=cogInst.name))
     cog.addCogInst(cogInst)
     fullCogDict[cogInst.name] = cog
 
 # Make a sample subset of COGs, for debugging
-print("Building sampleCogInstSet...")
+print("Building sampleCogInstList...")
 sampleCogNames = set()
 for cogName in fullCogDict.keys():
     if random.randrange(40) == 0:
         sampleCogNames.add(cogName)
-for cogInst in fullCogInstSet:
+for cogInst in fullCogInstList:
     if cogInst.name in sampleCogNames:
-        sampleCogInstSet.add(cogInst)
+        sampleCogInstList.append(cogInst)
 
 cogNamesList = fullCogDict.items()
 for name, cog in cogNamesList:
@@ -177,33 +176,26 @@ for name, cog in cogNamesList:
     for g in genomes:
         genomeDict[g] = genomeDict.get(g, 0) + 1
 
-print("%d Cog Instances" % len(fullCogInstSet))
+print("%d Cog Instances" % len(fullCogInstList))
 print("Dumping to a file...")
-with open(COG_INST_SET(), 'w') as f:
-    json.dump(fullCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
-        indent = 4)
+UtilStore(fullCogInstList, COG_INST_LIST())
 
-print("%d Sample Cog Instances" % len(sampleCogInstSet))
+print("%d Sample Cog Instances" % len(sampleCogInstList))
 print("Dumping to a file...")
-with open(SAMPLE_COG_INST_SET(), 'w') as f:
-    json.dump(sampleCogInstSet, f, cls = UtilJSONEncoder, sort_keys = True,
-        indent = 4)
+UtilStore(sampleCogInstList, SAMPLE_COG_INST_LIST())
 
 print("%d Cogs total" % len(fullCogDict))
 print("Dumping to a file...")
-with open(COG_LIST(), 'w') as f:
-    cogList = sorted(fullCogDict.values(), key = lambda x: x.instCount,
-                     reverse = True)
-    json.dump(cogList, f, cls = UtilJSONEncoder, sort_keys=True, indent=4)
+cogList = sorted(fullCogDict.values(), key = lambda x: x.instCount,
+    reverse=True)
+UtilStore(cogList, COG_LIST())
 
 print("%d genomes got COGs" % len(genomeDict))
-with open(GENOME_COG_CNT_LIST(), 'w') as f:
-    json.dump(sorted(genomeDict.items(), key = lambda x: x[1]), f, cls =
-        UtilJSONEncoder, sort_keys=True, indent=4)
+UtilStore(sorted(genomeDict.items(), key = lambda x: x[1]),
+    GENOME_COG_CNT_LIST())
 
 # See how many genomes got both COGs and taxa
-with open(PROK_TAXA_DICT(), 'r') as f:
-    taxaDict = json.load(f, object_hook = UtilJSONDecoderDictToObj)
+taxaDict = UtilLoad(PROK_TAXA_DICT())
 taxaSet = set(taxaDict.keys())
 genomeWithCogsSet = set(genomeDict.keys())
 print("%d genomes with both taxa and COGs" % len(set.intersection(taxaSet,

@@ -9,6 +9,7 @@ import numpy as np
 from sklearn import mixture
 from scipy import stats
 import matplotlib.pyplot as plt
+from shared.pyutils.utils import *
 
 def modeCount(input, thresholdMax, thresholdValley, minPoints):
     """
@@ -63,12 +64,11 @@ def clusterizeOneDimension(input, clusterCount, thresh):
 if __name__ == "__main__":
 
     print("reading COG instance set...")
-    with open(SAMPLE_COG_INST_SET(), 'r') as fset:
-        cogInstSet = json.load(fset, object_hook = UtilJSONDecoderDictToObj)
-    print("Read %d COG instances" % len(cogInstSet))
+    cogInstList = UtilLoad(SAMPLE_COG_INST_LIST())
+    print("Read %d COG instances" % len(cogInstList))
 
     cogLenDict = {}
-    for cogInst in cogInstSet:
+    for cogInst in cogInstList:
         l = cogLenDict.get(cogInst.name, [])
         l.append(cogInst.len)
         cogLenDict[cogInst.name] = l

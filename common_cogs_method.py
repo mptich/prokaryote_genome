@@ -5,14 +5,17 @@
 # common, then their distance in terms of COGs is defined as (Na * Nb) /
 # ((N+1) * (N+1))
 # Distance between COGs in terms of their taxonomy is defined in
-# Taxa.distance() method (file taxonomy.py)
+# TaxaType.distance() method (file taxonomy.py)
 
 from taxonomy import *
 import random
 import math
-import numpy as np
+import sys
+import operator
 from collections import defaultdict as DefDict
+from shared.pyutils.utils import *
 from shared.pyutils.distance_matrix import *
+from shared.algorithms.kendall import calculateWeightedKendall
 
 # COG name -> list of its lengthes
 cogLengthDict = DefDict(list)
@@ -51,7 +54,7 @@ def commonCogsWeightReverse(cs1, cs2):
     """
     return 1. / math.sqrt(float(len(cs1) + 1) * (len(cs2) + 1))
 
-def commonCogsDistNonRand(cs1, cs2):
+def commonCogsStatDist(cs1, cs2):
     """
     Calculates weight of the distance based on common COGs
     :param cs1: 1st set of cog names
@@ -87,14 +90,17 @@ def commonCogsDistNonRand(cs1, cs2):
     ec += 1.
     return (na * nb) / (ec * ec)
 
-def buildCogTaxaDict():
-    print("reading COG instance set...")
-    with open(COG_INST_SET(), 'r') as fset:
-        cogSet = json.load(fset, object_hook = UtilJSONDecoderDictToObj)
-    print("Read %d COG instances" % len(cogSet))
+
+def buildCogTaxaDict(cogLengthFilter, standAloneList = None):
+    if standAloneList is None:
+        standAloneList = []
+
+    print("reading COG instance list...")
+    cogList = UtilLoad(COG_INST_LIST())
+    print("Read %d COG instances" % len(cogList))
 
     print ("Building cogLengthDict...")
-    for cogInst in cogSet:
+    for cogInst in cogList:
         cogLengthDict[cogInst.name].append(cogInst.len)
     print("COGs read from file: %d" % len(cogLengthDict))
 
@@ -107,25 +113,30 @@ def buildCogTaxaDict():
     print ("Building cogDict...")
     cogDict = DefDict(set)
     validCogInstances = 0
-    for cogInst in cogSet:
+    for cogInst in cogList:
         name = cogInst.name
         assert(name in cogLengthDict)
         length = cogInst.len
         lenMean, lenStd = cogLengthDict[name]
-        if (length < (lenMean - 1.0 * lenStd)) or \
-                (length > (lenMean + 1.0 * lenStd)):
+        if (length < (lenMean - cogLengthFilter * lenStd)) or \
+                (length > (lenMean + cogLengthFilter * lenStd)):
             continue
         validCogInstances += 1
         dir = cogInst.dir
         cogDict[dir].add(name)
     print("Got %d organisms with COGS" % len(cogDict))
     print("Read %d COG instances, selected %d out of them" %
-        (len(cogSet), validCogInstances))
+        (len(cogList), validCogInstances))
 
     print("reading taxa dictionary...")
-    with open(PROK_TAXA_DICT(), 'r') as fdict:
-        taxaDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+    taxaDict = UtilLoad(PROK_TAXA_DICT())
     print("Read %d organisms" % len(taxaDict))
+
+    standAloneDict = {}
+    for dir in standAloneList:
+        if dir not in cogDict:
+            raise ValueError("Bad genome dir %s" % dir)
+        standAloneDict[dir] = cogDict[dir]
 
     temp = taxaDict.keys()
     for dir in temp:
@@ -136,48 +147,34 @@ def buildCogTaxaDict():
         if dir not in taxaDict:
             del cogDict[dir]
     print("Valid set contains %d organisms" % len(cogDict))
-
-    print ("Building removal by presence in too few directories...")
-    temp = DefDict(set)
-    for dir, cs in cogDict.items():
-        for cogName in cs:
-            temp[cogName].add(dir)
-    removeCogSet = set()
-    for cogName, dirSet in temp.items():
-        if len(dirSet) < 2:
-            removeCogSet.add(cogName)
-    print ("removeCogSet: %d COGs" % len(removeCogSet))
-
-    print ("Clearing cogDict and cogLengthDict from removeCogSet...")
-    for cogName in removeCogSet:
-        del cogLengthDict[cogName]
-        for dir, cs in cogDict.items():
-            if cogName in cs:
-                cs.remove(cogName)
-    print("Got %d total COGs in valid genomes" % len(cogLengthDict))
-
-    return (cogDict, taxaDict)
+    return (cogDict, taxaDict, standAloneDict)
 
 
 if __name__ == "__main__":
 
-    cogDict, taxaDict = buildCogTaxaDict()
+    if len(sys.argv) == 1:
+        cogLengthFilter = 1.0
+    else:
+        cogLengthFilter = float(sys.argv[1])
+    print ("Using cogLengthFilter %f" % cogLengthFilter)
+
+    cogDict, taxaDict, _ = buildCogTaxaDict(cogLengthFilter)
 
     # Building random distance for comparison
-    print("Building random distances...")
-    randDist = DefDict(dict)
-    for dir1 in cogDict:
-        for dir2 in cogDict:
-            randDist[dir1][dir2] = random.random()
+    # print("Building random distances...")
+    # randDist = DefDict(dict)
+    # for dir1 in cogDict:
+        # for dir2 in cogDict:
+            # randDist[dir1][dir2] = random.random()
 
     print("Building COG distances...")
     cogDist = DefDict(dict)
-    cogDistNonRand = DefDict(dict)
+    cogDistStat = DefDict(dict)
     for ordinal, (dir1, cs1) in enumerate(cogDict.items(), start = 1):
         print("\r%d. %s" % (ordinal, dir1)),
         for dir2, cs2 in cogDict.items():
             cogDist[dir1][dir2] = commonCogsDist(cs1, cs2)
-            cogDistNonRand[dir1][dir2] = commonCogsDistNonRand(cs1, cs2)
+            cogDistStat[dir1][dir2] = commonCogsStatDist(cs1, cs2)
 
     print("\nBuilding Taxonomy distances...")
     taxDist = DefDict(dict)
@@ -188,12 +185,12 @@ if __name__ == "__main__":
 
     cogDistMat = DistanceMatrix(doubleDict=cogDist)
     print("Got cogDistMat")
-    cogDistNonRandMat = DistanceMatrix(doubleDict=cogDistNonRand)
+    cogDistStatMat = DistanceMatrix(doubleDict=cogDistStat)
     print("Got cogDistNonRandMat")
     taxDistMat = DistanceMatrix(doubleDict=taxDist)
     print("Got taxDistMat")
-    randDistMat = DistanceMatrix(doubleDict=randDist)
-    print("Got randDistMat")
+    # randDistMat = DistanceMatrix(doubleDict=randDist)
+    # print("Got randDistMat")
 
     mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat,
         cogDistMat, None, True)
@@ -202,15 +199,26 @@ if __name__ == "__main__":
     print "Worst correlations: ", corrList[:10], "\n"
 
     mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat,
-                                                      cogDistNonRandMat,
+                                                      cogDistStatMat,
                                                     None, True)
     print("Unweighted non random correlation: mean %f std %f" % (mean, std))
     print "Components ", comp
     print "Worst correlations: ", corrList[:10], "\n"
+    UtilStore(corrList, GENOME_CORR_LIST())
 
-    mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat,
-        randDistMat, None, False)
-    print("Unweighted totally random correlation: mean %f std %f" % (mean, std))
+    cogCountList = [len(x) for x in [cogDict[y] for y in
+        sorted(cogDict.keys())]]
+    corr = calculateWeightedKendall(cogCountList, [x[1] for x in
+        sorted(corrList, key=operator.itemgetter(0))])
+
+    print("Correlation between COG counts and COG-taxa correlation: %f" %
+        corr)
+    UtilDrawHistogram(cogCountList)
+
+    # mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat,
+        # randDistMat, None, False)
+    # print("Unweighted totally random correlation: mean %f std %f" %
+        # (mean, std))
 
 
 

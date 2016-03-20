@@ -1,15 +1,13 @@
 # This module builds cleaned prokaryote dictionary:
 # directory -> ProkDnaSet
 
-import json
-from taxonomy import TaxonomyParser, Taxa
+from taxonomy import TaxonomyParser
 from filedefs import *
 from shared.pyutils.utils import *
 
 cleanDict = {}
 
-with open(PROK_GENOME_DICT(), 'r') as fdict:
-    masterDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+masterDict = UtilLoad(PROK_GENOME_DICT())
 
 for d,pg in masterDict.iteritems():
     sn = pg.getStrainList()
@@ -18,9 +16,7 @@ for d,pg in masterDict.iteritems():
     else:
         print("%d strains in %s" % (len(sn), d))
 
-with open(PROK_CLEAN_GENOME_DICT(), 'w') as fdict:
-    json.dump(cleanDict, fdict, cls = UtilJSONEncoder, sort_keys = True,
-              indent = 4)
+UtilStore(cleanDict, PROK_CLEAN_GENOME_DICT())
 
 print("%s: output %d entries" % (PROK_CLEAN_GENOME_DICT(), len(cleanDict)))
 

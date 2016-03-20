@@ -26,8 +26,8 @@ class TaxonomyParser(UtilObject):
                 ll = l.strip().lower().split(',')
                 if len(ll) != 7:
                     continue
-                taxa = Taxa(domain=ll[1], phylum=ll[3], cls=ll[4], \
-                        _name = ll[2], order = ll[5], family=ll[6])
+                taxa = Taxa(_name = ll[2], _type = TaxaType(domain=ll[1], \
+                    phylum=ll[3], cls=ll[4], order = ll[5], family=ll[6]))
                 self.taxaNamesDict[ll[2]] = taxa
 
     def addProkDnaSet(self, prokDnaSet):
@@ -79,18 +79,13 @@ class TaxonomyParser(UtilObject):
                     self.taxaDict[prokDnaSet.dir] = taxa
 
         # Dump taxa dixionary and unmatched Taxa organism names
-        with open(PROK_TAXA_DICT(), 'w') as f:
-            json.dump(self.taxaDict, f, cls = UtilJSONEncoder,
-                      sort_keys = True, indent = 4)
-        with open(UNMATCHED_TAXA_SET(), 'w') as f:
-            json.dump(self.unmatchedSet, f, cls = UtilJSONEncoder,
-                      sort_keys = True, indent = 4)
+        UtilStore(self.taxaDict, PROK_TAXA_DICT())
+        UtilStore(self.unmatchedSet, UNMATCHED_TAXA_SET())
         # Dump procDna directories that has not matched anything in taxonomy
-        with open(UNMATCHED_PROC_DNA_SET(), 'w') as f:
-            prokDnaDirSet = set([x.dir for x in self.nameDict.values()])
-            matchedProkDnaDirSet = set(self.taxaDict.keys())
-            json.dump(prokDnaDirSet - matchedProkDnaDirSet, f,
-                      cls = UtilJSONEncoder, sort_keys=True, indent = 4)
+        prokDnaDirSet = set([x.dir for x in self.nameDict.values()])
+        matchedProkDnaDirSet = set(self.taxaDict.keys())
+        UtilStore(prokDnaDirSet - matchedProkDnaDirSet,
+            UNMATCHED_PROC_DNA_SET())
 
     def stats(self):
         return ("Taxonomy size %d, out of them unmatched %d; "
@@ -99,9 +94,10 @@ class TaxonomyParser(UtilObject):
 
 
 
-class Taxa(UtilObject):
+class TaxaType(UtilObject):
     """
-    This class describes a taxa of Prokaryotic organism
+    This class describes a taxonomy classification of a
+        Prokaryotic organism
     Attributes:
         domain, phylum, cls, order, family
     """
@@ -132,6 +128,30 @@ class Taxa(UtilObject):
     @staticmethod
     def maxDistance():
         return 5
+
+class Taxa(UtilObject):
+    """
+    This class describes a specific instance of a Prokaryotic organism
+    along with its taxonomy type
+    Attributes:
+        _name - name of the organism
+        _type - TaxaType for this organism
+    """
+
+    def __init__(self, **kwargs):
+        if self.buildFromDict(kwargs):
+            return
+        self.__dict__.update(kwargs)
+
+    def key(self):
+        return self._type.key() + "_" + self._name
+
+    def distance(self, other):
+        return self._type.distance(other.type)
+
+    @property
+    def type(self):
+        return self._type
 
     @property
     def name(self):

@@ -18,13 +18,13 @@ def PROK_DNA_DICT():
 def PROK_CLEAN_GENOME_DICT():
     return config.WORK_FILES_DIR() + "chromosome_dict.json"
 
-# Dump of CogInst set
-def COG_INST_SET():
-    return config.WORK_FILES_DIR() + "cog_inst_set.json"
+# Dump of CogInst list
+def COG_INST_LIST():
+    return config.WORK_FILES_DIR() + "cog_inst_list.json"
 
-# Dump of sample CogInst set
-def SAMPLE_COG_INST_SET():
-    return config.WORK_FILES_DIR() + "sample_cog_inst_set.json"
+# Dump of sample CogInst list
+def SAMPLE_COG_INST_LIST():
+    return config.WORK_FILES_DIR() + "sample_cog_inst_list.json"
 
 # Dump of Cog list
 def COG_LIST():
@@ -47,4 +47,8 @@ def UNMATCHED_TAXA_SET():
 # taxonomy
 def UNMATCHED_PROC_DNA_SET():
     return config.WORK_FILES_DIR() + "unmatched_proc_dna_set.json"
+
+# List of genome dirs with their correlation values
+def GENOME_CORR_LIST():
+    return config.WORK_FILES_DIR() + "genome_corr_list.json"
 

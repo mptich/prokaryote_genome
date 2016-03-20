@@ -2,9 +2,10 @@
 # but requested by other folks to create files for them to investigate.
 
 from filedefs import *
+from shared.pyutils.utils import *
 
-with open(PROK_TAXA_DICT(), 'r') as fdict:
-    masterDict = json.load(fdict, object_hook = UtilJSONDecoderDictToObj)
+
+masterDict = UtilLoad(PROK_TAXA_DICT())
 
 nameDict = {}
 for dir, taxa in masterDict.items():
@@ -20,13 +21,12 @@ with open(config.WORK_FILES_DIR() + "index_name.txt", 'w') as f:
         dirDict[nameDict[name]] = i
 
 print("reading COG instance set...")
-with open(COG_INST_SET(), 'r') as fset:
-    cogSet = json.load(fset, object_hook = UtilJSONDecoderDictToObj)
+cogList = UtilLoad(COG_INST_LIST())
 
 print("Processing cogInstList...")
 cogInstList = []
 dirExceptions = set()
-for cogInst in cogSet:
+for cogInst in cogList:
     dir = cogInst.dir
     if dir in dirDict:
         cogInstList.append((dirDict[dir], cogInst.name, cogInst.len))
