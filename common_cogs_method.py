@@ -132,11 +132,18 @@ def buildCogTaxaDict(cogLengthFilter, standAloneList = None):
     taxaDict = UtilLoad(PROK_TAXA_DICT())
     print("Read %d organisms" % len(taxaDict))
 
-    standAloneDict = {}
+    standAloneCogDict = {}
     for dir in standAloneList:
         if dir not in cogDict:
             raise ValueError("Bad genome dir %s" % dir)
-        standAloneDict[dir] = cogDict[dir]
+        standAloneCogDict[dir] = cogDict[dir]
+
+    standAloneTaxaDict = {}
+    for dir in standAloneList:
+        if dir not in taxaDict:
+            standAloneTaxaDict[dir] = "Unknown"
+        else:
+            standAloneTaxaDict[dir] = taxaDict[dir]
 
     temp = taxaDict.keys()
     for dir in temp:
@@ -147,7 +154,8 @@ def buildCogTaxaDict(cogLengthFilter, standAloneList = None):
         if dir not in taxaDict:
             del cogDict[dir]
     print("Valid set contains %d organisms" % len(cogDict))
-    return (cogDict, taxaDict, standAloneDict)
+
+    return (cogDict, taxaDict, standAloneCogDict, standAloneTaxaDict)
 
 
 if __name__ == "__main__":
@@ -158,7 +166,7 @@ if __name__ == "__main__":
         cogLengthFilter = float(sys.argv[1])
     print ("Using cogLengthFilter %f" % cogLengthFilter)
 
-    cogDict, taxaDict, _ = buildCogTaxaDict(cogLengthFilter)
+    cogDict, taxaDict, _, _ = buildCogTaxaDict(cogLengthFilter)
 
     # Building random distance for comparison
     # print("Building random distances...")

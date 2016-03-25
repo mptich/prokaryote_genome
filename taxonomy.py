@@ -126,6 +126,17 @@ class TaxaType(UtilObject):
             return 5
 
     @staticmethod
+    def hierarchy():
+        return ["domain", "phylum", "cls", "order", "family"]
+
+    def __repr__(self):
+        s = "{"
+        for n in TaxaType.hierarchy():
+            s += " " + n + ": " + getattr(self, n) + " "
+        s += " }"
+        return s
+
+    @staticmethod
     def maxDistance():
         return 5
 
@@ -148,6 +159,10 @@ class Taxa(UtilObject):
 
     def distance(self, other):
         return self._type.distance(other.type)
+
+    def __repr__(self):
+        s = "< " + self._name + " " + repr(self._type) + ">"
+        return s
 
     @property
     def type(self):
