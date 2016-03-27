@@ -107,23 +107,24 @@ class TaxaType(UtilObject):
             return
         self.__dict__.update(kwargs)
 
+    @property
     def key(self):
         return self.family + "-" + self.order + "-" + self.cls + "-" + \
             self.phylum + "-" + self.domain
 
     def distance(self, other):
-        if self.family == other.family:
-            return 0
-        elif self.order == other.order:
-            return 1
-        elif self.cls == other.cls:
-            return 2
-        elif self.phylum == other.phylum:
-            return 3
-        elif self.domain == other.domain:
-            return 4
-        else:
+        if self.domain != other.domain:
             return 5
+        elif self.phylum != other.phylum:
+            return 4
+        elif self.cls != other.cls:
+            return 3
+        elif self.order != other.order:
+            return 2
+        elif self.family != other.family:
+            return 1
+        else:
+            return 0
 
     @staticmethod
     def hierarchy():
@@ -154,8 +155,9 @@ class Taxa(UtilObject):
             return
         self.__dict__.update(kwargs)
 
+    @property
     def key(self):
-        return self._type.key() + "_" + self._name
+        return self._type.key + "_" + self._name
 
     def distance(self, other):
         return self._type.distance(other.type)

@@ -128,12 +128,12 @@ def buildCogSet(prokDna, cogProteinDict):
             faFileName = cogFastaFileName(cogName)
             faLineNumber = faFileDict.get(faFileName, 1)
 
-            cogInst = CogInst(_name = cogName, chrom = prokDna.key(), pttLine =
+            cogInst = CogInst(_name = cogName, chrom = prokDna.key, pttLine =
                 lineno, strand = cogStrand, start = cogStart, _len = cogLen,
                 faLine = faLineNumber)
             cogInstSet.add(cogInst)
 
-            multiFile.write(faFileName, '>' + cogInst.key() + '\n' +
+            multiFile.write(faFileName, '>' + cogInst.key + '\n' +
                             cogProteinDict[cogPid] + '\n')
             faFileDict[faFileName] = faLineNumber + 2
 

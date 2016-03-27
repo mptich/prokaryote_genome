@@ -162,6 +162,7 @@ class ProkDna(UtilObject):
     def dir(self):
         return self.fullPttName.split('/')[-2]
 
+    @property
     def key(self):
         return self.getPttBase() + ":" + self.dir
 
@@ -249,6 +250,7 @@ class ProkDnaSet(UtilObject):
     def getStrain(self):
         return self.strain
 
+    @property
     def key(self):
         return self.strain + ":" + self._dir
 
@@ -323,6 +325,7 @@ class ProkGenome(UtilObject):
     def dir(self):
         return self._dir
 
+    @property
     def key(self):
         return self._dir
 
@@ -370,6 +373,7 @@ class CogInst(UtilObject):
             return
         self.__dict__.update(kwargs)
 
+    @property
     def key(self):
         return str(self.pttLine) + ":" + self.chrom
 
@@ -417,7 +421,7 @@ class Cog(UtilObject):
 
     def addCogInst(self, cogInst):
         assert(self._name == cogInst.name)
-        dir = CogInst.getDirFromKey(cogInst.key())
+        dir = CogInst.getDirFromKey(cogInst.key)
         self.tempDict[dir] = self.tempDict.get(dir, 0) + 1
         self.instCount += 1
 
@@ -435,6 +439,7 @@ class Cog(UtilObject):
     def getGenCount(self):
         return self.genCount
 
+    @property
     def key(self):
         return self._name
 

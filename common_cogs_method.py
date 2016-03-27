@@ -71,7 +71,7 @@ def commonCogsStatDist(cs1, cs2):
             then
             EC = (T*C - Na*Nb) / (T+C-Na-Nb) - expected # of common COGs (
             take it as 0 if EC < 0), and the distance between genomes will be
-            d = (Na*Nb) / ((EC+1)^2)
+            d = ln((Na+1)*(Nb+1) / ((EC+1)^2))
     """
     commonSet = cs1 & cs2
     c = float(len(commonSet))
@@ -88,7 +88,7 @@ def commonCogsStatDist(cs1, cs2):
     if ec < 0.:
         ec = 0.
     ec += 1.
-    return (na * nb) / (ec * ec)
+    return math.log((na + 1) * (nb + 1) / (ec * ec))
 
 
 def buildCogTaxaDict(cogLengthFilter, standAloneList = None):
@@ -191,6 +191,17 @@ if __name__ == "__main__":
             d = taxa1.distance(taxa2)
             taxDist[dir1][dir2] = d
 
+    print("Building dict of taxonomy dist counts...")
+    genTaxDistCntDict = DefDict(lambda: [0] * (TaxaType.maxDistance() + 1))
+    for dir, tdd in taxDist.items():
+        for d in tdd.values():
+            genTaxDistCntDict[dir][d] += 1
+    UtilStore(genTaxDistCntDict, GENOME_TAX_DIST_CNT_DICT())
+    ttTaxDistCntDict = {}
+    for dir, l in genTaxDistCntDict.items():
+        ttTaxDistCntDict[taxaDict[dir].type.key] = l
+    UtilStore(ttTaxDistCntDict, TAXTYPE_TAX_DIST_CNT_DICT())
+
     cogDistMat = DistanceMatrix(doubleDict=cogDist)
     print("Got cogDistMat")
     cogDistStatMat = DistanceMatrix(doubleDict=cogDistStat)
@@ -213,15 +224,6 @@ if __name__ == "__main__":
     print "Components ", comp
     print "Worst correlations: ", corrList[:10], "\n"
     UtilStore(corrList, GENOME_CORR_LIST())
-
-    cogCountList = [len(x) for x in [cogDict[y] for y in
-        sorted(cogDict.keys())]]
-    corr = calculateWeightedKendall(cogCountList, [x[1] for x in
-        sorted(corrList, key=operator.itemgetter(0))])
-
-    print("Correlation between COG counts and COG-taxa correlation: %f" %
-        corr)
-    UtilDrawHistogram(cogCountList)
 
     # mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat,
         # randDistMat, None, False)

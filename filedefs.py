@@ -34,7 +34,7 @@ def COG_LIST():
 def GENOME_COG_CNT_LIST():
     return config.WORK_FILES_DIR() + "genome_cog_cnt_list.json"
 
-# Dump of ProkDnaSet.key() -> Taxa
+# Dump of ProkDnaSet.key -> Taxa
 def PROK_TAXA_DICT():
     return config.WORK_FILES_DIR() + "taxa_dict.json"
 
@@ -52,3 +52,10 @@ def UNMATCHED_PROC_DNA_SET():
 def GENOME_CORR_LIST():
     return config.WORK_FILES_DIR() + "genome_corr_list.json"
 
+# Dict of genome dirs -> list of counts for their taxonomy distances
+def GENOME_TAX_DIST_CNT_DICT():
+    return config.WORK_FILES_DIR() + "genome_tax_dist_cnt_dict.json"
+
+# Dict of TaxType key -> list of counts for their taxonomy distances
+def TAXTYPE_TAX_DIST_CNT_DICT():
+    return config.WORK_FILES_DIR() + "taxtype_tax_dist_cnt_dict.json"
