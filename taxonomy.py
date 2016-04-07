@@ -2,6 +2,8 @@
 # it for
 
 import re
+import sys
+import operator
 from filedefs import *
 from shared.pyutils.utils import *
 from genome_cls import *
@@ -26,6 +28,7 @@ class TaxonomyParser(UtilObject):
                 ll = l.strip().lower().split(',')
                 if len(ll) != 7:
                     continue
+                ll = [x.strip() for x in ll]
                 taxa = Taxa(_name = ll[2], _type = TaxaType(domain=ll[1], \
                     phylum=ll[3], cls=ll[4], order = ll[5], family=ll[6]))
                 self.taxaNamesDict[ll[2]] = taxa
@@ -103,6 +106,11 @@ class TaxaType(UtilObject):
     """
 
     def __init__(self, **kwargs):
+        self.domain = ""
+        self.phylum = ""
+        self.cls = ""
+        self.order = ""
+        self.family = ""
         if self.buildFromDict(kwargs):
             return
         self.__dict__.update(kwargs)
@@ -173,5 +181,125 @@ class Taxa(UtilObject):
     @property
     def name(self):
         return self._name
+
+
+class TaxaTypeNode(UtilObject):
+    def __init__(self, type, name, parent):
+        self.dict = {}
+        self.type = type
+        self.name = name
+        self.parentId = id(parent)
+        self.parent = parent
+
+    @property
+    def key(self):
+        return (self.name, self.parentId)
+
+    def __repr__(self):
+        return "{ " + self.type + ": " + self.name + " parent: " + \
+            (self.parent.name if self.parent else "") + " }"
+
+
+class TaxaTypeTree(UtilObject):
+    """
+    This class represents a tree of TaxaTypeNodes. Basically, it is just
+    a dictionary of top level nodes.
+    """
+    def __init__(self, taxaTypeSet):
+        self.dict = {}
+        nameList = TaxaType.hierarchy()
+        for taxaType in taxaTypeSet:
+            currDict = self.dict
+            parentObj = None
+            for name in nameList:
+                nameVal = getattr(taxaType, name, None)
+                if nameVal is None:
+                    break
+                if nameVal not in currDict:
+                    currDict[nameVal] = TaxaTypeNode(
+                        name, nameVal, parentObj)
+                parentObj = currDict[nameVal]
+                currDict = parentObj.dict
+
+    @staticmethod
+    def taxaTypeFromNodeList(nodeList):
+        return TaxaType(**dict(zip(TaxaType.hierarchy(),
+            [x.name for x in nodeList])))
+
+    def optimal(self, taxaTypeCostDict):
+        """
+        :param taxaTypeCostDict:
+        :return: optimal TaxaType for the given taxaTypeCostDict
+        """
+        nodeList = []
+        nodeCostDict = {}
+        TaxaTypeTree.recurse(self.dict, nodeList, nodeCostDict,
+                taxaTypeCostDict)
+
+        # Now nodeCostDict is filled in
+        cost, bestNodeList = TaxaTypeTree.walkDown(self.dict.values(),
+            nodeCostDict, [], sys.float_info.max, 100.)
+        taxaType = TaxaTypeTree.taxaTypeFromNodeList(bestNodeList)
+        return (taxaType, cost)
+
+    @staticmethod
+    def walkDown(nodeList, nodeCostDict, currNodeList, bestCost, alpha):
+
+        nodeList = sorted(nodeList, key = lambda x: nodeCostDict[x])
+        maxCost = nodeCostDict[nodeList[0]] * (1.0 + alpha)
+        bestNodeList = None
+
+        for node in nodeList:
+            if nodeCostDict[node] > maxCost:
+                break
+            currNodeList.append(node)
+            if not node.dict:
+                cost = nodeCostDict[node]
+                if cost < bestCost:
+                    bestCost = cost
+                    bestNodeList = currNodeList[:]
+            else:
+                bestCost, candidateNodeList = TaxaTypeTree.walkDown(
+                    node.dict.values(), nodeCostDict, currNodeList,
+                    bestCost, alpha)
+                if candidateNodeList:
+                    bestNodeList = candidateNodeList
+            del currNodeList[-1]
+
+        return (bestCost, bestNodeList)
+
+
+    @staticmethod
+    def recurse(nodeDict, nodeList, nodeCostDict, taxaTypeCostDict):
+        for node in nodeDict.values():
+            nodeList.append(node)
+            if not node.dict:
+                taxaType = TaxaTypeTree.taxaTypeFromNodeList(nodeList)
+                nodeCostDict[node] = taxaTypeCostDict[taxaType]
+            else:
+                TaxaTypeTree.recurse(node.dict, nodeList, nodeCostDict,
+                    taxaTypeCostDict)
+                nodeCostDict[node] =\
+                    np.mean([nodeCostDict[x] for x in node.dict.values()])
+            del nodeList[-1]
+
+    def utilJsonDump(self, currDict = None):
+        if currDict is None:
+            currDict = self.dict
+        localList = []
+        for name, node in currDict.iteritems():
+            localList.append(name)
+            if node.dict:
+                localList.append(self.utilJsonDump(node.dict))
+        return localList
+
+    @classmethod
+    def utilJsonLoad(dumpStr):
+        """
+        Not implemented yet
+        :return: object of this class
+        """
+        raise Exception("Not implemented")
+        return None
 
 

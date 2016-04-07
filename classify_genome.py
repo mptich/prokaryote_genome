@@ -1,3 +1,4 @@
+#UNFINISHED
 # Place a genome (identified by its directory name) into a Taxonomy
 # Classification tree, based on the best Common COG correlation
 # Directory name is passed in as a parameter
@@ -10,42 +11,21 @@ from shared.algorithms.kendall import calculateWeightedKendall
 from shared.pyutils.utils import *
 import operator
 
+cogDict, taxaDict, _, _ = buildCogTaxaDict(3.0)
+print ("cogDict len %d, taxaDict len %d" % (len(cogDict), len(taxaDict)))
 
-if len(sys.argv) < 2:
-    print("Missing genome directory names")
-    sys.exit(-1)
-
-genDirList = sys.argv[1:]
-print ("Trying to reclassify taxonomy for %s" % str(genDirList))
-
-cogDict, taxaDict, genCogDict, genTaxaDict = buildCogTaxaDict(3.0, genDirList)
-
-dirCorrList = UtilLoad(GENOME_CORR_LIST())
-for t in dirCorrList:
-    # Remove all igenomes with correlations < 0.7
-    if t[1] < 0.7:
-        del cogDict[t[0]]
-        del taxaDict[t[0]]
-
-for dir in genCogDict:
-    if dir in cogDict:
-        del cogDict[dir]
-        del taxaDict[dir]
-
-print ("Organisms left in cogDict %d taxaDict %d" %
-       (len(cogDict), len(taxaDict)))
+dirCorrDict = UtilLoad(GENOME_CORR_DICT())
+print ("dirCorrDict len %d" % len(dirCorrDict))
 
 taxaTypeSet = set([x.type for x in taxaDict.values()])
 print ("taxaTypeSet size %d" % len(taxaTypeSet))
 
-for dir, genCogSet in genCogDict.items():
-    print("\nProcessing %s\nCurrent Taxonomy: %s\n" %
-          (dir, repr(genTaxaDict[dir])))
-
-    cogDistDict = {}
-    for d, cogSet in cogDict.items():
-        cogDistDict[d] = commonCogsStatDist(cogSet, genCogSet)
-    cogDistList = [cogDistDict[x] for x in sorted(cogDistDict.keys())]
+print("Building COG distances...")
+cogDist = DefDict(dict)
+for ordinal, (dir1, cs1) in enumerate(cogDict.iteritems(), start = 1):
+    print("\r%d. %s" % (ordinal, dir1)),
+    for dir2, cs2 in cogDict.iteritems():
+        cogDist[dir1][dir2] = commonCogsStatDist(cs1, cs2)
 
     # Calculate quality of various classifications based on the average
     # COG distance to them

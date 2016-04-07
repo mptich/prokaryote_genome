@@ -223,7 +223,7 @@ if __name__ == "__main__":
     print("Unweighted non random correlation: mean %f std %f" % (mean, std))
     print "Components ", comp
     print "Worst correlations: ", corrList[:10], "\n"
-    UtilStore(corrList, GENOME_CORR_LIST())
+    UtilStore(dict(corrList), GENOME_CORR_DICT())
 
     # mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat,
         # randDistMat, None, False)

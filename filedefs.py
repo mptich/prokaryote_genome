@@ -48,9 +48,9 @@ def UNMATCHED_TAXA_SET():
 def UNMATCHED_PROC_DNA_SET():
     return config.WORK_FILES_DIR() + "unmatched_proc_dna_set.json"
 
-# List of genome dirs with their correlation values
-def GENOME_CORR_LIST():
-    return config.WORK_FILES_DIR() + "genome_corr_list.json"
+# Dict of genome dirs -> their correlation values
+def GENOME_CORR_DICT():
+    return config.WORK_FILES_DIR() + "genome_corr_dict.json"
 
 # Dict of genome dirs -> list of counts for their taxonomy distances
 def GENOME_TAX_DIST_CNT_DICT():
@@ -59,3 +59,11 @@ def GENOME_TAX_DIST_CNT_DICT():
 # Dict of TaxType key -> list of counts for their taxonomy distances
 def TAXTYPE_TAX_DIST_CNT_DICT():
     return config.WORK_FILES_DIR() + "taxtype_tax_dist_cnt_dict.json"
+
+# Dict of dir -> TaxaTypeTree
+def TAXA_TYPE_TREE():
+    return config.WORK_FILES_DIR() + "taxa_type_tree.json"
+
+# JSON file of hierarchichally reclassified genomes
+def HIER_RECLASSIFIED_LIST():
+    return config.WORK_FILES_DIR() + "hier_reclassified_list.json"
