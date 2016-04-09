@@ -28,12 +28,12 @@ def commonCogsDist(cs1, cs2):
     Calculates distances based on common COGs
     :param cs1: 1st set of cog names
     :param cs2: 2nd set of cog names
-    :return: distance, based on the equation (len(cs1) + 1) * (len(cs2) + 1)
-        / ((N+1) * (N+1)), where N is the number of common COG names
+    :return: distance, based on the equation ln((len(cs1) + 1) * (len(cs2) + 1)
+        / ((N+1) * (N+1))), where N is the number of common COG names
     """
     commonSet = cs1 & cs2
     l = len(commonSet) + 1
-    return float(len(cs1) + 1) * (len(cs2) + 1) / (l * l)
+    return math.log(float(len(cs1) + 1) * (len(cs2) + 1) / (l * l))
 
 def commonCogsWeight(cs1, cs2):
     """

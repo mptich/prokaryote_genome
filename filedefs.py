@@ -64,6 +64,14 @@ def TAXTYPE_TAX_DIST_CNT_DICT():
 def TAXA_TYPE_TREE():
     return config.WORK_FILES_DIR() + "taxa_type_tree.json"
 
+# Genome dir -> dict of {taxaTypes -> avg COG distance to dir}
+def TAXA_TYPE_COG_DIST_DICT():
+   return config.WORK_FILES_DIR() + "taxa_type_cog_dist_dict.json"
+
+# Genome dir -> list of TaxaTypeNodes with their cost
+def DIR_NODE_COST_DICT():
+    return config.WORK_FILES_DIR() + "dir_node_cost_dict.json"
+
 # JSON file of hierarchichally reclassified genomes
 def HIER_RECLASSIFIED_LIST():
     return config.WORK_FILES_DIR() + "hier_reclassified_list.json"

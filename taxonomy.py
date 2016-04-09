@@ -145,6 +145,12 @@ class TaxaType(UtilObject):
         s += " }"
         return s
 
+    def __str__(self):
+        return self.__repr__()
+
+    def __eq__(self, other):
+        return (self.key == other.key)
+
     @staticmethod
     def maxDistance():
         return 5
@@ -195,9 +201,16 @@ class TaxaTypeNode(UtilObject):
     def key(self):
         return (self.name, self.parentId)
 
+    def __eq__(self, other):
+        return ((self.name == other.name) and \
+               (self.parentId == other.parentId))
+
     def __repr__(self):
         return "{ " + self.type + ": " + self.name + " parent: " + \
             (self.parent.name if self.parent else "") + " }"
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class TaxaTypeTree(UtilObject):
@@ -206,6 +219,7 @@ class TaxaTypeTree(UtilObject):
     a dictionary of top level nodes.
     """
     def __init__(self, taxaTypeSet):
+        self.nodeCostDict = None
         self.dict = {}
         nameList = TaxaType.hierarchy()
         for taxaType in taxaTypeSet:
@@ -226,17 +240,18 @@ class TaxaTypeTree(UtilObject):
         return TaxaType(**dict(zip(TaxaType.hierarchy(),
             [x.name for x in nodeList])))
 
-    def optimal(self, taxaTypeCostDict):
-        """
-        :param taxaTypeCostDict:
-        :return: optimal TaxaType for the given taxaTypeCostDict
-        """
+    def bldCostDict(self, taxaTypeCostDict):
         nodeList = []
         nodeCostDict = {}
         TaxaTypeTree.recurse(self.dict, nodeList, nodeCostDict,
                 taxaTypeCostDict)
+        return nodeCostDict
 
-        # Now nodeCostDict is filled in
+    def optimal(self, nodeCostDict):
+        """
+        :param nodeCostDict:
+        :return: optimal TaxaType for the given nodeCostDict
+        """
         cost, bestNodeList = TaxaTypeTree.walkDown(self.dict.values(),
             nodeCostDict, [], sys.float_info.max, 100.)
         taxaType = TaxaTypeTree.taxaTypeFromNodeList(bestNodeList)
@@ -245,16 +260,16 @@ class TaxaTypeTree(UtilObject):
     @staticmethod
     def walkDown(nodeList, nodeCostDict, currNodeList, bestCost, alpha):
 
-        nodeList = sorted(nodeList, key = lambda x: nodeCostDict[x])
-        maxCost = nodeCostDict[nodeList[0]] * (1.0 + alpha)
+        nodeList = sorted(nodeList, key = lambda x: nodeCostDict[x].mean)
+        maxCost = nodeCostDict[nodeList[0]].mean * (1.0 + alpha)
         bestNodeList = None
 
         for node in nodeList:
-            if nodeCostDict[node] > maxCost:
+            if nodeCostDict[node].mean > maxCost:
                 break
             currNodeList.append(node)
             if not node.dict:
-                cost = nodeCostDict[node]
+                cost = nodeCostDict[node].mean
                 if cost < bestCost:
                     bestCost = cost
                     bestNodeList = currNodeList[:]
@@ -275,22 +290,26 @@ class TaxaTypeTree(UtilObject):
             nodeList.append(node)
             if not node.dict:
                 taxaType = TaxaTypeTree.taxaTypeFromNodeList(nodeList)
-                nodeCostDict[node] = taxaTypeCostDict[taxaType]
+                nodeCostDict[node] = taxaTypeCostDict[repr(taxaType)]
             else:
                 TaxaTypeTree.recurse(node.dict, nodeList, nodeCostDict,
                     taxaTypeCostDict)
-                nodeCostDict[node] =\
-                    np.mean([nodeCostDict[x] for x in node.dict.values()])
+                nodeCostDict[node] = reduce(lambda x,y: x.combine(y),
+                    [nodeCostDict[x] for x in node.dict.values()])
             del nodeList[-1]
 
-    def utilJsonDump(self, currDict = None):
+    def utilJsonDump(self, currDict = None, nodeAttribDict = None):
         if currDict is None:
             currDict = self.dict
         localList = []
         for name, node in currDict.iteritems():
-            localList.append(name)
+            if nodeAttribDict is None:
+                localList.append(name)
+            else:
+                localList.append((name, nodeAttribDict[node]))
             if node.dict:
-                localList.append(self.utilJsonDump(node.dict))
+                localList.append(self.utilJsonDump(currDict = node.dict,
+                    nodeAttribDict = nodeAttribDict))
         return localList
 
     @classmethod
