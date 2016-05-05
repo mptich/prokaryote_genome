@@ -6,6 +6,7 @@ import sys
 import operator
 from filedefs import *
 from shared.pyutils.utils import *
+from shared.pyutils.UtilNormDistrib import *
 from genome_cls import *
 
 class TaxonomyParser(UtilObject):
@@ -252,37 +253,28 @@ class TaxaTypeTree(UtilObject):
         :param nodeCostDict:
         :return: optimal TaxaType for the given nodeCostDict
         """
-        cost, bestNodeList = TaxaTypeTree.walkDown(self.dict.values(),
-            nodeCostDict, [], sys.float_info.max, 100.)
-        taxaType = TaxaTypeTree.taxaTypeFromNodeList(bestNodeList)
-        return (taxaType, cost)
+        taxaTypeProbDict = {}
+        TaxaTypeTree.walkDown(self.dict.values(),
+            nodeCostDict, [], 1., taxaTypeProbDict)
+        return taxaTypeProbDict
 
     @staticmethod
-    def walkDown(nodeList, nodeCostDict, currNodeList, bestCost, alpha):
+    def walkDown(nodeList, nodeCostDict, currNodeList, prob,
+        taxaTypeProbDict):
 
-        nodeList = sorted(nodeList, key = lambda x: nodeCostDict[x].mean)
-        maxCost = nodeCostDict[nodeList[0]].mean * (1.0 + alpha)
-        bestNodeList = None
-
-        for node in nodeList:
-            if nodeCostDict[node].mean > maxCost:
-                break
+        probList = UtilNormDistrib.minProb([nodeCostDict[x] \
+            for x in nodeList])
+        for ord, node in enumerate(nodeList):
             currNodeList.append(node)
+            p = prob * probList[ord]
             if not node.dict:
-                cost = nodeCostDict[node].mean
-                if cost < bestCost:
-                    bestCost = cost
-                    bestNodeList = currNodeList[:]
+                # Final node
+                taxaType = TaxaTypeTree.taxaTypeFromNodeList(currNodeList)
+                taxaTypeProbDict[taxaType] = p
             else:
-                bestCost, candidateNodeList = TaxaTypeTree.walkDown(
-                    node.dict.values(), nodeCostDict, currNodeList,
-                    bestCost, alpha)
-                if candidateNodeList:
-                    bestNodeList = candidateNodeList
+                TaxaTypeTree.walkDown(node.dict.values(),
+                    nodeCostDict, currNodeList, p, taxaTypeProbDict)
             del currNodeList[-1]
-
-        return (bestCost, bestNodeList)
-
 
     @staticmethod
     def recurse(nodeDict, nodeList, nodeCostDict, taxaTypeCostDict):

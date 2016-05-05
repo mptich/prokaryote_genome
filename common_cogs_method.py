@@ -54,7 +54,7 @@ def commonCogsWeightReverse(cs1, cs2):
     """
     return 1. / math.sqrt(float(len(cs1) + 1) * (len(cs2) + 1))
 
-def commonCogsStatDist(cs1, cs2):
+def commonCogsDistAdj(cs1, cs2):
     """
     Calculates weight of the distance based on common COGs
     :param cs1: 1st set of cog names
@@ -182,7 +182,7 @@ if __name__ == "__main__":
         print("\r%d. %s" % (ordinal, dir1)),
         for dir2, cs2 in cogDict.items():
             cogDist[dir1][dir2] = commonCogsDist(cs1, cs2)
-            cogDistStat[dir1][dir2] = commonCogsStatDist(cs1, cs2)
+            cogDistStat[dir1][dir2] = commonCogsDistAdj(cs1, cs2)
 
     print("\nBuilding Taxonomy distances...")
     taxDist = DefDict(dict)

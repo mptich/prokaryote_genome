@@ -68,10 +68,14 @@ def TAXA_TYPE_TREE():
 def TAXA_TYPE_COG_DIST_DICT():
    return config.WORK_FILES_DIR() + "taxa_type_cog_dist_dict.json"
 
-# Genome dir -> list of TaxaTypeNodes with their cost
-def DIR_NODE_COST_DICT():
-    return config.WORK_FILES_DIR() + "dir_node_cost_dict.json"
+# List of UtilObject's for reclassified genomes with old neighbors
+# in the taxonomy classification
+def RECLASSIFIED_DIR_LIST(name):
+    return config.WORK_FILES_DIR() + "reclassified_" + name + \
+        "_dir_list.json"
 
-# JSON file of hierarchichally reclassified genomes
-def HIER_RECLASSIFIED_LIST():
-    return config.WORK_FILES_DIR() + "hier_reclassified_list.json"
+# List of UtilObject's for reclassified genomes without old neighbors
+# in the taxonomy classification
+def RECLASSIFIED_SINGLE_DIR_LIST(name):
+    return config.WORK_FILES_DIR() + "reclassified_single_" + name + \
+        "_dir_list.json"
