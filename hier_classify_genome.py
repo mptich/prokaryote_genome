@@ -1,3 +1,4 @@
+# CURRENTLY UNUSED
 # Place a genome (identified by its directory name) into a Taxonomy
 # Classification tree, based on the hierarchical algorithm: average
 # COG distances for domain, phylum, etc.

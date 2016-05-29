@@ -73,9 +73,3 @@ def TAXA_TYPE_COG_DIST_DICT():
 def RECLASSIFIED_DIR_LIST(name):
     return config.WORK_FILES_DIR() + "reclassified_" + name + \
         "_dir_list.json"
-
-# List of UtilObject's for reclassified genomes without old neighbors
-# in the taxonomy classification
-def RECLASSIFIED_SINGLE_DIR_LIST(name):
-    return config.WORK_FILES_DIR() + "reclassified_single_" + name + \
-        "_dir_list.json"

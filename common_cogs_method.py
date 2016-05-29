@@ -215,14 +215,19 @@ if __name__ == "__main__":
         cogDistMat, None, True)
     print("Unweighted correlation: mean %f std %f" % (mean, std))
     print "Components ", comp
-    print "Worst correlations: ", corrList[:10], "\n"
+    print "Worst correlations: ", corrList[:10]
+    print "Best correlations: ", corrList[-10:], "\n"
+    UtilDrawHistogram(inputList = [x[1] for x in corrList], show = False)
 
     mean, std, corrList, comp = distanceMatrixCorrelation(taxDistMat,
                                                       cogDistStatMat,
                                                     None, True)
     print("Unweighted non random correlation: mean %f std %f" % (mean, std))
     print "Components ", comp
-    print "Worst correlations: ", corrList[:10], "\n"
+    print "Worst correlations: ", corrList[:10]
+    print "Best correlations: ", corrList[-10:], "\n"
+    UtilDrawHistogram(inputList = [x[1] for x in corrList], show = True)
+
     UtilStore(dict(corrList), GENOME_CORR_DICT())
 
     # mean, std, corrList, _ = distanceMatrixCorrelation(taxDistMat,

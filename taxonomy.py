@@ -4,6 +4,7 @@
 import re
 import sys
 import operator
+import copy
 from filedefs import *
 from shared.pyutils.utils import *
 from shared.pyutils.UtilNormDistrib import *
@@ -112,9 +113,8 @@ class TaxaType(UtilObject):
         self.cls = ""
         self.order = ""
         self.family = ""
-        if self.buildFromDict(kwargs):
-            return
-        self.__dict__.update(kwargs)
+        if not self.buildFromDict(kwargs):
+            self.__dict__.update(kwargs)
 
     @property
     def key(self):
@@ -134,6 +134,28 @@ class TaxaType(UtilObject):
             return 1
         else:
             return 0
+
+    def depth(self):
+        if self.family:
+            return 5
+        if self.order:
+            return 4
+        if self.cls:
+            return 3
+        if self.phylum:
+            return 2
+        if self.domain:
+            return 1
+        return 0
+
+    def parent(self):
+        depth = self.depth()
+        if depth != 0:
+            parent = copy.deepcopy(self)
+            setattr(parent, TaxaType.hierarchy()[depth-1], "")
+            return parent
+        else:
+            return self
 
     @staticmethod
     def hierarchy():
