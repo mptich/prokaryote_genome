@@ -9,10 +9,11 @@ from filedefs import *
 from shared.pyutils.utils import *
 from shared.pyutils.UtilNormDistrib import *
 from genome_cls import *
+import csv
 
 class TaxonomyParser(UtilObject):
 
-    def __init__(self, fileName):
+    def __init__(self, taxaFileName, manualMatchDict):
         # Mapping of name terms -> names
         self.termDict = {}
         # Mapping of names to ProkDnaSet
@@ -23,19 +24,31 @@ class TaxonomyParser(UtilObject):
         # The main result: map of ProkDnaSet keys to Taxa's
         self.taxaDict = {}
 
+        # Manual match count
+        self.manualMatchCount = 0
+
         # Mapping of taxonomy names to Taxa
         self.taxaNamesDict = {}
-        with open(fileName, 'r') as f:
-            for l in f:
-                ll = l.strip().lower().split(',')
-                if len(ll) != 7:
-                    continue
+        with open(taxaFileName, 'r') as f:
+            csvreader = csv.reader(f)
+            for ll in csvreader:
+                if len(ll) != 11:
+                    raise IOError("Bad taxonomy line %s" % str(ll))
                 ll = [x.strip() for x in ll]
-                taxa = Taxa(_name = ll[2], _type = TaxaType(domain=ll[1], \
-                    phylum=ll[3], cls=ll[4], order = ll[5], family=ll[6]))
+                taxa = Taxa(_name = ll[2], _type = TaxaType.newTaxaType(
+                    ll[1], ll[3], ll[4], ll[5], ll[6], ll[7],
+                    ll[8], ll[9], ll[10]))
                 self.taxaNamesDict[ll[2]] = taxa
 
+        for dir, taxaName in manualMatchDict.iteritems():
+            self.taxaDict[dir] = self.taxaNamesDict[taxaName]
+            del self.taxaNamesDict[taxaName]
+            self.manualMatchCount += 1
+
     def addProkDnaSet(self, prokDnaSet):
+        if prokDnaSet.dir in self.taxaDict:
+            # Has been added manually
+            return
         name = prokDnaSet.name
         self.nameDict[name] = prokDnaSet
         # Break the name into the terms
@@ -94,8 +107,10 @@ class TaxonomyParser(UtilObject):
 
     def stats(self):
         return ("Taxonomy size %d, out of them unmatched %d; "
-            "%d gemomes matched taxonomy" % (len(self.taxaNamesDict),
-            len(self.unmatchedSet), len(self.taxaDict)))
+            "%d gemomes matched taxonomy, out of them %d manually" %
+            (len(self.taxaNamesDict) + self.manualMatchCount,
+             len(self.unmatchedSet), len(self.taxaDict),
+             self.manualMatchCount))
 
 
 
@@ -104,49 +119,39 @@ class TaxaType(UtilObject):
     This class describes a taxonomy classification of a
         Prokaryotic organism
     Attributes:
-        domain, phylum, cls, order, family
+        See hierarchy()
     """
 
+    taxonNames_ = ["superkingdom", "phylum", "class", "order", "family",
+                   "genus", "species group", "species", "subspecies"]
+
     def __init__(self, **kwargs):
-        self.domain = ""
-        self.phylum = ""
-        self.cls = ""
-        self.order = ""
-        self.family = ""
         if not self.buildFromDict(kwargs):
             self.__dict__.update(kwargs)
 
+    def taxonValList(self):
+        return [getattr(self, n) for n in TaxaType.hierarchy()]
+
+    def taxonValListReversed(self):
+        return [getattr(self, n) for n in reversed(TaxaType.hierarchy())]
+
     @property
     def key(self):
-        return self.family + "-" + self.order + "-" + self.cls + "-" + \
-            self.phylum + "-" + self.domain
+        return "_".join(self.taxonValList())
 
     def distance(self, other):
-        if self.domain != other.domain:
-            return 5
-        elif self.phylum != other.phylum:
-            return 4
-        elif self.cls != other.cls:
-            return 3
-        elif self.order != other.order:
-            return 2
-        elif self.family != other.family:
-            return 1
-        else:
-            return 0
+        count = TaxaType.hierarchySize()
+        for x, y in zip(self.taxonValList(), other.taxonValList()):
+            if x != y:
+                return count
+            count -= 1
+        return 0
 
     def depth(self):
-        if self.family:
-            return 5
-        if self.order:
-            return 4
-        if self.cls:
-            return 3
-        if self.phylum:
-            return 2
-        if self.domain:
-            return 1
-        return 0
+        it = (idx for (idx,val) in enumerate(self.taxonValListReversed()) \
+            if val != "")
+        size = TaxaType.hierarchySize()
+        return size - next(it, size)
 
     def parent(self):
         depth = self.depth()
@@ -159,7 +164,15 @@ class TaxaType(UtilObject):
 
     @staticmethod
     def hierarchy():
-        return ["domain", "phylum", "cls", "order", "family"]
+        return TaxaType.taxonNames_
+
+    @staticmethod
+    def hierarchySize():
+        return len(TaxaType.taxonNames_)
+
+    @staticmethod
+    def newTaxaType(*taxons):
+        return TaxaType(**dict(zip(TaxaType.hierarchy(), taxons)))
 
     def __repr__(self):
         s = "{"
@@ -176,7 +189,7 @@ class TaxaType(UtilObject):
 
     @staticmethod
     def maxDistance():
-        return 5
+        return TaxaType.hierarchySize()
 
 class Taxa(UtilObject):
     """

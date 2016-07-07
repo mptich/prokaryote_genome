@@ -20,18 +20,13 @@ if len(sys.argv) != 2:
     sys.exit(-1)
 
 cogDistFuncName = sys.argv[1]
-cogDistFunc = getattr(commonCogsMethod, cogDistFuncName)
 
-cogDict, taxaDict, _, _ = commonCogsMethod.buildCogTaxaDict(3.0)
-print ("cogDict len %d, taxaDict len %d" % (len(cogDict), len(taxaDict)))
+_, _, taxaDict =\
+    commonCogsMethod.buildCogTaxaDict()
+print ("taxaDict len %d" % len(taxaDict))
 
-print("Building COG distances...")
-cogDist = DefDict(dict)
-for ordinal, (dir1, cs1) in enumerate(cogDict.iteritems(), start = 1):
-    print("\r%d. %s" % (ordinal, dir1)),
-    for dir2, cs2 in cogDict.iteritems():
-        cogDist[dir1][dir2] = cogDistFunc(cs1, cs2)
-print
+print("Reading COG distances...")
+cogDist = UtilLoad(COG_DIST_DICT(cogDistFuncName))
 
 # Build dictionaries similar to taxaDict, but for all variants of
 # depths of the taxonomy
@@ -74,8 +69,11 @@ for ind, (dir1, d) in enumerate(cogDist.iteritems(), start=1):
                 break
 print
 
+print("Building distDistrList...")
 distDistrList = [DefDict(list) for i in range(TaxaType.maxDistance()+1)]
 for ind, dd in enumerate(distDistrDirList):
+    print("Size of dict at depth %d in distDistrDirList is %d" %
+          (ind, len(dd)))
     for taxaType, dird in dd.iteritems():
         for dir, distList in dird.iteritems():
             distDistrList[ind][taxaType].append(np.mean(distList))
@@ -155,7 +153,7 @@ for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
             (dir, origType.distance(betterType), sigmas,
             repr(origType), repr(betterType), oldDist,
             betterDist, globStd[depth])
-        tempList.append((sigmas, desc))
+        tempList.append((sigmas, oldDist - betterDist, desc))
         obj = UtilObject(dir = dir,
             taxaDist = origType.distance(betterType), sigmas=sigmas, \
             oldClass = origType, newClass=betterType, oldCogDist = oldDist, \
@@ -165,12 +163,21 @@ for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
 tempObjList = sorted(tempObjList, key = lambda x: x.sigmas, reverse = True)
 UtilStore(tempObjList, RECLASSIFIED_DIR_LIST(cogDistFuncName))
 
-tempList = [x[1] for x in sorted(tempList, reverse = True)]
+tempListBySigmas = [x[2] for x in \
+    sorted(tempList, key = lambda x: x[0], reverse=True) if x[0] >= 3.0]
+tempListByDistDiff = [x[2] for x in \
+    sorted(tempList, key = lambda x: x[1], reverse=True) if x[0] >= 3.0]
 
 with open(config.WORK_FILES_DIR() + "Reclassify_" + cogDistFuncName + \
-    ".txt", "w") as f:
+    "_by_sigmas.txt", "w") as f:
     f.write("RECLASSIFICATIONS of genomes\n\n")
-    for x in tempList:
+    for x in tempListBySigmas:
+        f.write(x)
+
+with open(config.WORK_FILES_DIR() + "Reclassify_" + cogDistFuncName + \
+    "_by_dist_diff.txt", "w") as f:
+    f.write("RECLASSIFICATIONS of genomes\n\n")
+    for x in tempListByDistDiff:
         f.write(x)
 
 print("\nReclassified %d good sigmas %d same %d" % (len(tempList),

@@ -2,6 +2,10 @@
 
 import config
 
+# CSV file on Taxonomy classification
+def TAXONOMY_FILE():
+    return config.WORK_FILES_DIR() + "taxonomy.csv"
+
 # List of all directories with Prokaryot genomes
 def PROKARYOT_DIRS_FILE():
     return config.PROKARYOTS_DIR() + "genome_dirs.txt"
@@ -22,9 +26,17 @@ def PROK_CLEAN_GENOME_DICT():
 def COG_INST_LIST():
     return config.WORK_FILES_DIR() + "cog_inst_list.json"
 
+# Genome dir -> set of COG names
+def COG_DICT():
+    return config.WORK_FILES_DIR() + "cog_dict.json"
+
 # Dump of sample CogInst list
 def SAMPLE_COG_INST_LIST():
     return config.WORK_FILES_DIR() + "sample_cog_inst_list.json"
+
+# dir1, dir2 -> COG distance
+def COG_DIST_DICT(funcName):
+    return config.WORK_FILES_DIR() + "cog_dist_dict_" + funcName + ".json"
 
 # Dump of Cog list
 def COG_LIST():

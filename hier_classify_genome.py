@@ -18,7 +18,7 @@ if len(sys.argv) != 2:
 
 cogDistFunc = getattr(ccm, sys.argv[1])
 
-cogDict, taxaDict, _, _ = ccm.buildCogTaxaDict(3.0)
+cogDict, cogFreq, cogWeightDict, taxaDict = ccm.buildCogTaxaDict()
 print ("cogDict len %d, taxaDict len %d" % (len(cogDict), len(taxaDict)))
 
 dirCorrDict = UtilLoad(GENOME_CORR_DICT())
