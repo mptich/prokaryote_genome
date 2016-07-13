@@ -35,8 +35,8 @@ def SAMPLE_COG_INST_LIST():
     return config.WORK_FILES_DIR() + "sample_cog_inst_list.json"
 
 # dir1, dir2 -> COG distance
-def COG_DIST_DICT(funcName):
-    return config.WORK_FILES_DIR() + "cog_dist_dict_" + funcName + ".json"
+def COG_DIST_DICT():
+    return config.WORK_FILES_DIR() + "cog_dist_dict.json"
 
 # Dump of Cog list
 def COG_LIST():
@@ -60,10 +60,6 @@ def UNMATCHED_TAXA_SET():
 def UNMATCHED_PROC_DNA_SET():
     return config.WORK_FILES_DIR() + "unmatched_proc_dna_set.json"
 
-# Dict of genome dirs -> their correlation values
-def GENOME_CORR_DICT():
-    return config.WORK_FILES_DIR() + "genome_corr_dict.json"
-
 # Dict of genome dirs -> list of counts for their taxonomy distances
 def GENOME_TAX_DIST_CNT_DICT():
     return config.WORK_FILES_DIR() + "genome_tax_dist_cnt_dict.json"
@@ -72,16 +68,10 @@ def GENOME_TAX_DIST_CNT_DICT():
 def TAXTYPE_TAX_DIST_CNT_DICT():
     return config.WORK_FILES_DIR() + "taxtype_tax_dist_cnt_dict.json"
 
-# Dict of dir -> TaxaTypeTree
-def TAXA_TYPE_TREE():
-    return config.WORK_FILES_DIR() + "taxa_type_tree.json"
-
-# Genome dir -> dict of {taxaTypes -> avg COG distance to dir}
-def TAXA_TYPE_COG_DIST_DICT():
-   return config.WORK_FILES_DIR() + "taxa_type_cog_dist_dict.json"
+def COG_WEIGHTS_DICT_LIST():
+    return config.WORK_FILES_DIR() + "cog_weights_dict_list.json"
 
 # List of UtilObject's for reclassified genomes with old neighbors
 # in the taxonomy classification
-def RECLASSIFIED_DIR_LIST(name):
-    return config.WORK_FILES_DIR() + "reclassified_" + name + \
-        "_dir_list.json"
+def RECLASSIFIED_DIR_LIST():
+    return config.WORK_FILES_DIR() + "reclassified_dir_list.json"

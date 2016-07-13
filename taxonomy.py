@@ -162,6 +162,28 @@ class TaxaType(UtilObject):
         else:
             return self
 
+    def isAncestor(self, anc):
+        depth = anc.depth()
+        if (depth > self.depth()):
+            return False
+        for i in range(depth):
+            name = TaxaType.hierarchy()[i]
+            if getattr(self, name) != getattr(anc, name):
+                return False
+        return True
+
+    def commonAncestor(self, other):
+        type1 = self
+        type2 = other
+        while type1 != type2:
+            depth1 = type1.depth()
+            depth2 = type2.depth()
+            if depth1 >= depth2:
+                type1 = type1.parent()
+            if depth2 >= depth1:
+                type2 = type2.parent()
+        return type1
+
     @staticmethod
     def hierarchy():
         return TaxaType.taxonNames_
@@ -226,126 +248,75 @@ class Taxa(UtilObject):
 
 
 class TaxaTypeNode(UtilObject):
-    def __init__(self, type, name, parent):
-        self.dict = {}
+    def __init__(self, type):
+        self.children = set()
+        self.dirs = set()
         self.type = type
-        self.name = name
-        self.parentId = id(parent)
-        self.parent = parent
 
     @property
     def key(self):
-        return (self.name, self.parentId)
+        return self.type.key
 
     def __eq__(self, other):
-        return ((self.name == other.name) and \
-               (self.parentId == other.parentId))
+        return (self.type == other.type)
 
     def __repr__(self):
-        return "{ " + self.type + ": " + self.name + " parent: " + \
-            (self.parent.name if self.parent else "") + " }"
+        return repr(self.type)
 
     def __str__(self):
         return self.__repr__()
+
+    def addChild(self, type):
+        self.children.add(type)
+
+    def addDir(self, dir):
+        self.dirs.add(dir)
 
 
 class TaxaTypeTree(UtilObject):
     """
     This class represents a tree of TaxaTypeNodes. Basically, it is just
-    a dictionary of top level nodes.
+    a list, indexed by depth, of dictionaries mapping TaxaTypes into
+    TaxaTypeNodes
     """
-    def __init__(self, taxaTypeSet):
-        self.nodeCostDict = None
-        self.dict = {}
-        nameList = TaxaType.hierarchy()
-        for taxaType in taxaTypeSet:
-            currDict = self.dict
-            parentObj = None
-            for name in nameList:
-                nameVal = getattr(taxaType, name, None)
-                if nameVal is None:
+    def __init__(self, taxaDict):
+        self.levels = []
+        for i in range(TaxaType.hierarchySize() + 1):
+            self.levels.append({})
+
+        for dir, taxa in taxaDict.iteritems():
+            type = taxa.type
+            childNode = None
+            while True:
+                d = self.levels[type.depth()]
+                node = d.get(type, TaxaTypeNode(type))
+                d[type] = node
+                node.addDir(dir)
+                if childNode:
+                    node.addChild(childNode)
+                childNode = node
+                type = type.parent()
+                if type.depth() == 0:
                     break
-                if nameVal not in currDict:
-                    currDict[nameVal] = TaxaTypeNode(
-                        name, nameVal, parentObj)
-                parentObj = currDict[nameVal]
-                currDict = parentObj.dict
 
-    @staticmethod
-    def taxaTypeFromNodeList(nodeList):
-        return TaxaType(**dict(zip(TaxaType.hierarchy(),
-            [x.name for x in nodeList])))
+    def getDirSet(self, type):
+        return self.levels[type.depth()][type].dirs
 
-    def bldCostDict(self, taxaTypeCostDict):
-        nodeList = []
-        nodeCostDict = {}
-        TaxaTypeTree.recurse(self.dict, nodeList, nodeCostDict,
-                taxaTypeCostDict)
-        return nodeCostDict
+    def getDirCount(self, type):
+        return len(self.levels[type.depth()][type].dirs)
 
-    def optimal(self, nodeCostDict):
-        """
-        :param nodeCostDict:
-        :return: optimal TaxaType for the given nodeCostDict
-        """
-        taxaTypeProbDict = {}
-        TaxaTypeTree.walkDown(self.dict.values(),
-            nodeCostDict, [], 1., taxaTypeProbDict)
-        return taxaTypeProbDict
+    def getChildrenSet(self, type):
+        return self.levels[type.depth()][type].children
 
-    @staticmethod
-    def walkDown(nodeList, nodeCostDict, currNodeList, prob,
-        taxaTypeProbDict):
+    def getNode(self, type):
+        return self.levels[type.depth()][type]
 
-        probList = UtilNormDistrib.minProb([nodeCostDict[x] \
-            for x in nodeList])
-        for ord, node in enumerate(nodeList):
-            currNodeList.append(node)
-            p = prob * probList[ord]
-            if not node.dict:
-                # Final node
-                taxaType = TaxaTypeTree.taxaTypeFromNodeList(currNodeList)
-                taxaTypeProbDict[taxaType] = p
-            else:
-                TaxaTypeTree.walkDown(node.dict.values(),
-                    nodeCostDict, currNodeList, p, taxaTypeProbDict)
-            del currNodeList[-1]
+    def getAllTypesSet(self):
+        s = set()
+        for d in self.levels:
+            s |= set(d.keys())
+        return s
 
-    @staticmethod
-    def recurse(nodeDict, nodeList, nodeCostDict, taxaTypeCostDict):
-        for node in nodeDict.values():
-            nodeList.append(node)
-            if not node.dict:
-                taxaType = TaxaTypeTree.taxaTypeFromNodeList(nodeList)
-                nodeCostDict[node] = taxaTypeCostDict[repr(taxaType)]
-            else:
-                TaxaTypeTree.recurse(node.dict, nodeList, nodeCostDict,
-                    taxaTypeCostDict)
-                nodeCostDict[node] = reduce(lambda x,y: x.combine(y),
-                    [nodeCostDict[x] for x in node.dict.values()])
-            del nodeList[-1]
 
-    def utilJsonDump(self, currDict = None, nodeAttribDict = None):
-        if currDict is None:
-            currDict = self.dict
-        localList = []
-        for name, node in currDict.iteritems():
-            if nodeAttribDict is None:
-                localList.append(name)
-            else:
-                localList.append((name, nodeAttribDict[node]))
-            if node.dict:
-                localList.append(self.utilJsonDump(currDict = node.dict,
-                    nodeAttribDict = nodeAttribDict))
-        return localList
-
-    @classmethod
-    def utilJsonLoad(dumpStr):
-        """
-        Not implemented yet
-        :return: object of this class
-        """
-        raise Exception("Not implemented")
-        return None
 
 

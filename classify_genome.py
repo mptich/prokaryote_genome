@@ -14,174 +14,149 @@ import operator
 import math
 import itertools
 
+CutOffDiff = 1.0
+CutOffBestFit = 3.0
 
-if len(sys.argv) != 2:
-    print "Missing COG distance function name"
-    sys.exit(-1)
 
-cogDistFuncName = sys.argv[1]
-
-_, _, taxaDict =\
-    commonCogsMethod.buildCogTaxaDict()
+_, _, taxaDict, _ = \
+    commonCogsMethod.buildCogTaxaDict(noWeights = True)
 print ("taxaDict len %d" % len(taxaDict))
 
 print("Reading COG distances...")
-cogDist = UtilLoad(COG_DIST_DICT(cogDistFuncName))
+cogDist = UtilLoad(COG_DIST_DICT())
 
-# Build dictionaries similar to taxaDict, but for all variants of
-# depths of the taxonomy
-print("Building taxaTypeDictList...")
-taxaTypeDictList = [DefDict(lambda: None) for i in range(
-    TaxaType.maxDistance()+1)]
-for dir, taxa in taxaDict.iteritems():
-    taxaType = taxa.type
-    depth = taxaType.depth()
-    while True:
-        taxaTypeDictList[depth][dir] = taxaType
-        if depth == 0:
-            break
-        taxaType = taxaType.parent()
-        depth = taxaType.depth()
+# Build a tree of TaxaTypes
+taxaTypeTree = TaxaTypeTree(taxaDict)
 
-# Now build dictionaries of taxa type -> set of dirs, for each depth level
-print("Building taxaTypeRevDictList...")
-taxaTypeRevDictList = [DefDict(set) for i in range(TaxaType.maxDistance()+1)]
-for ind, ttd in enumerate(taxaTypeDictList):
-    d = taxaTypeRevDictList[ind]
-    for dir, taxaType in ttd.iteritems():
-        d[taxaType].add(dir)
+# Set of all Taxa types on all levels
+allTaxaTypes = taxaTypeTree.getAllTypesSet()
+print("Length of allTaxaTypes %d" % len(allTaxaTypes))
 
-# Calculate global distribution of distances, on each level
-print("Distribution of distances...")
-distDistrDirList = [DefDict(lambda: DefDict(list)) for i in \
-    range(TaxaType.maxDistance()+1)]
-for ind, (dir1, d) in enumerate(cogDist.iteritems(), start=1):
-    print("\r%u. %s" % (ind, dir1)),
-    for dir2, dist in d.iteritems():
-        if dir1 == dir2:
-            continue
-        # Find common parent
-        for depth in reversed(range(TaxaType.maxDistance()+1)):
-            taxaType1 = taxaTypeDictList[depth][dir1]
-            taxaType2 = taxaTypeDictList[depth][dir2]
-            if taxaType1 and taxaType2 and (taxaType1 == taxaType2):
-                distDistrDirList[depth][taxaType1][dir1].append(dist)
-                break
+# Build a dictionary: [dir][taxaType] -> UtilObject(mean, std,
+# isAncest, distList), where
+# mean - mean distance between this dir and all [other] dirs in this taxaType
+# std - standard deviation, if applicable
+# distList - list of all the distances
+print("Building taxaTypeDistDict...")
+taxaTypeDistDict = DefDict(dict)
+taxaTypeAncDistDict = DefDict(lambda: [None] * (TaxaType.hierarchySize()+1))
+for ind, dir in enumerate(taxaDict, start = 1):
+    print("\r%u. %s" % (ind, dir)),
+    d = taxaTypeDistDict[dir]
+    listAnc = taxaTypeAncDistDict[dir]
+    cogDistForDir = cogDist[dir]
+    for currType in allTaxaTypes:
+        dirs = taxaTypeTree.getDirSet(currType)
+        if dir in dirs:
+            ancestorList = True
+            dirs.remove(dir)
+        else:
+            ancestorList = False
+        distList = [cogDistForDir[x] for x in dirs]
+        meanVal = 0.0
+        stdVal = 0.0
+        if len(distList) > 0:
+            meanVal = np.mean(distList)
+        if len(distList) > 1:
+            stdVal = np.std(distList, ddof = 1.0)
+        if ancestorList:
+            listAnc[currType.depth()] = UtilObject(mean=meanVal, std=stdVal,
+                distList=distList)
+        else:
+            d[currType] = UtilObject(mean=meanVal, std=stdVal,
+                distList=distList)
 print
 
-print("Building distDistrList...")
-distDistrList = [DefDict(list) for i in range(TaxaType.maxDistance()+1)]
-for ind, dd in enumerate(distDistrDirList):
-    print("Size of dict at depth %d in distDistrDirList is %d" %
-          (ind, len(dd)))
-    for taxaType, dird in dd.iteritems():
-        for dir, distList in dird.iteritems():
-            distDistrList[ind][taxaType].append(np.mean(distList))
-
-print("Histogram of distances...")
-for depth in range(TaxaType.maxDistance()+1):
-    inputList = list(itertools.chain.from_iterable(
-        distDistrList[depth].values()))
-    if depth != 0:
-        UtilDrawHistogram(inputList = inputList, show = False)
-UtilDrawHistogram(show=True)
-
-# Calculate global STD. STD is calculated for each level of the Taxonomy
-# tree separately
-print("Calculating globalStd...")
-globStd = []
-for depth in range(TaxaType.maxDistance()+1):
-    sumInst = 0
-    sumStd = 0.0
-    for taxaType, distList in distDistrList[depth].iteritems():
-        if len(distList) < 3:
+# Build lists of distances for each level
+print("Build globDistList...")
+globDistList = []
+for i in range(TaxaType.hierarchySize() + 1):
+    globDistList.append([])
+for listAnc in taxaTypeAncDistDict.values():
+    for ind, obj in enumerate(listAnc):
+        if obj is None:
             continue
-        sumInst += len(distList)
-        std = np.std(distList, ddof = 1)
-        sumStd += len(distList) * std * std
-    globStd.append(math.sqrt(sumStd / sumInst))
-print("globStd: %s" % globStd)
+        globDistList[ind].extend(obj.distList)
 
-# Build genome reclassifications
-tempSameCount = 0
-tempGoodSigmaCount = 0
-tempList = []
-tempObjList = []
-print("Build reclassification...")
-for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
-    print("\r%u. %s" % (ind, dir)),
-    oldType = taxa.type
-    origType = oldType
-    depth = oldType.depth()
-    while len(taxaTypeRevDictList[depth][oldType]) < 2:
-        oldType = oldType.parent()
-        depth = oldType.depth()
-    # Find old distance
-    distList = [cogDist[dir][dir1] for dir1 in \
-        taxaTypeRevDictList[depth][oldType] if dir != dir1]
-    oldDist = np.mean(distList)
-    # Find better type
-    betterDist = oldDist
-    betterType = None
-    for taxaType, dirSet in taxaTypeRevDictList[depth].iteritems():
-        if taxaType == oldType:
-            continue
-        assert(dir not in dirSet)
-        distList = [cogDist[dir][dir1] for dir1 in dirSet]
-        newDist = np.mean(distList)
-        if newDist < betterDist:
-            betterDist = newDist
-            betterType = taxaType
-
-    if not betterType:
-        tempSameCount += 1
+# Build list of UtilObject(mean, std, count)
+globStdList = []
+for l in globDistList:
+    UtilDrawHistogram(l, show = False)
+    if len(l) >= 2:
+        std = std=np.std(l, ddof=1.0)
     else:
-        # Reclassified !
-        assert(oldType.depth() == betterType.depth())
-        depth = betterType.depth()
-        sigmas = (oldDist - betterDist) / globStd[depth]
-        if sigmas >= 3.0:
-            tempGoodSigmaCount += 1
-        desc = "%s\n" \
-            "Taxonomy distance between old and new positions: %d\n" \
-            "Sigmas: %f\n" \
-            "Old classification: %s\n" \
-            "New classification: %s\n" \
-            "Old COG distance: %f\n" \
-            "New COG distance: %f\n" \
-            "STD: %f\n\n" % \
-            (dir, origType.distance(betterType), sigmas,
-            repr(origType), repr(betterType), oldDist,
-            betterDist, globStd[depth])
-        tempList.append((sigmas, oldDist - betterDist, desc))
-        obj = UtilObject(dir = dir,
-            taxaDist = origType.distance(betterType), sigmas=sigmas, \
-            oldClass = origType, newClass=betterType, oldCogDist = oldDist, \
-            newCogDist = betterDist, std=globStd[depth])
-        tempObjList.append(obj)
+        std = None
+    globStdList.append(std)
+UtilDrawHistogram(show = True)
+print globStdList
 
-tempObjList = sorted(tempObjList, key = lambda x: x.sigmas, reverse = True)
-UtilStore(tempObjList, RECLASSIFIED_DIR_LIST(cogDistFuncName))
+bestFitHistogram = []
+reclassList = []
+print("RECLASSIFICATIONS...")
+for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
+    typeOrig = taxa.type
+    distObjAnc = taxaTypeAncDistDict[dir]
+    taxaTypeToObj = taxaTypeDistDict[dir]
 
-tempListBySigmas = [x[2] for x in \
-    sorted(tempList, key = lambda x: x[0], reverse=True) if x[0] >= 3.0]
-tempListByDistDiff = [x[2] for x in \
-    sorted(tempList, key = lambda x: x[1], reverse=True) if x[0] >= 3.0]
+    bestFit = 0.0
+    bestFitType = None
+    bestFitComparedTaxons = None
+    for taxaOther in taxaDict.values():
+        typeOther = taxaOther.type
+        commonAncestor = typeOrig.commonAncestor(typeOther)
+        commonDepth = commonAncestor.depth()
+        if (commonAncestor == typeOrig) or (commonAncestor == typeOther):
+            continue
+        distObjOther = [None] * (TaxaType.hierarchySize() + 1)
+        currType = typeOther
+        while currType.depth() > commonDepth:
+            distObjOther[currType.depth()] = taxaTypeToObj[currType]
+            currType = currType.parent()
+        sum = 0.0
+        worstDiff = 1000000. # Very large number
+        compCount = 0
+        comparedTaxons = []
+        prevDistAnc = None
+        prevDistOther = None
+        for i in range(TaxaType.hierarchySize(), commonDepth, -1):
+            objAnc = distObjAnc[i]
+            objOther = distObjOther[i]
+            calcAnc = bool(objAnc) and bool(objAnc.distList)
+            calcOther = bool(objOther) and bool(objOther.distList)
+            if calcAnc:
+                prevDistAnc = objAnc.mean
+            if calcOther:
+                prevDistOther = objOther.mean
+            if (calcAnc or calcOther) and \
+                (prevDistAnc is not None) and (prevDistOther is not None):
+                diff = (prevDistAnc - prevDistOther) / globStdList[i]
+                if diff < CutOffDiff:
+                    sum = 0.0
+                    break
+                sum += diff
+                comparedTaxons.append((TaxaType.hierarchy()[i-1], diff))
+        if sum > bestFit:
+            bestFit = sum
+            bestFitType = typeOther
+            bestFitComparedTaxons = comparedTaxons
 
-with open(config.WORK_FILES_DIR() + "Reclassify_" + cogDistFuncName + \
-    "_by_sigmas.txt", "w") as f:
-    f.write("RECLASSIFICATIONS of genomes\n\n")
-    for x in tempListBySigmas:
-        f.write(x)
+    print("\r%u. %s bestFit %f" % (ind, dir, bestFit)),
+    bestFitHistogram.append(bestFit)
+    if bestFit >= CutOffBestFit:
+        s = ("\n%s\nOriginal: %s\nReclassified: %s\nTaxonomy distance: %d" +\
+            "\nSigmas: %f\nCompared taxons: %s\nSigmas per compare: %f\n")%\
+            (dir, repr(typeOrig), repr(bestFitType),
+            typeOrig.distance(bestFitType), bestFit,
+            ", ".join([":".join((str(y) for y in x)) for x in \
+            bestFitComparedTaxons]),
+            bestFit/len(bestFitComparedTaxons))
+        print s
+        reclassList.append((bestFit, s))
 
-with open(config.WORK_FILES_DIR() + "Reclassify_" + cogDistFuncName + \
-    "_by_dist_diff.txt", "w") as f:
-    f.write("RECLASSIFICATIONS of genomes\n\n")
-    for x in tempListByDistDiff:
-        f.write(x)
+UtilDrawHistogram(bestFitHistogram, show=True)
 
-print("\nReclassified %d good sigmas %d same %d" % (len(tempList),
-    tempGoodSigmaCount, tempSameCount))
+reclassList = sorted(reclassList, reverse = True)
 
-
-
+with open(config.WORK_FILES_DIR() + "Reclassify.txt", "w") as f:
+    for t in reclassList:
+        f.write(t[1])
