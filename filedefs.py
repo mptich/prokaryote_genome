@@ -50,6 +50,10 @@ def GENOME_COG_CNT_LIST():
 def PROK_TAXA_DICT():
     return config.WORK_FILES_DIR() + "taxa_dict.json"
 
+# Official organism name -> dir
+def NAME_DIR_DICT():
+    return config.WORK_FILES_DIR() + "name_dir_dict.json"
+
 # Set of organism names from the Taxonomy file that could not be matched
 # against the names in teh Prokaryotic database
 def UNMATCHED_TAXA_SET():
@@ -75,3 +79,7 @@ def COG_WEIGHTS_DICT_LIST():
 # in the taxonomy classification
 def RECLASSIFIED_DIR_LIST():
     return config.WORK_FILES_DIR() + "reclassified_dir_list.json"
+
+# List of 16S rRNAs for each prokaryote organism
+#def FASTA_FILE_16S():
+    #return config.WORK_FILES_DIR() + "16s_rrna.fa"

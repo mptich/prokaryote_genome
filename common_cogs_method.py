@@ -19,6 +19,9 @@ from shared.pyutils.distance_matrix import *
 from shared.algorithms.kendall import calculateWeightedKendall
 from scipy.optimize import anneal
 
+CogDistOptimalParams = \
+    {"cogReg" : 5.44122751, "genReg" : -5.85405896, "mixReg" : 0.17919745}
+
 # Unit of quantization of COG weight regularization
 COG_REG_STEP = 0.5
 COG_REG_LOWER = 0.
@@ -281,6 +284,15 @@ if __name__ == "__main__":
     if (len(sys.argv) == 5) and (sys.argv[1] == "store"):
         cogDist = buildCogDistances(cogDict, cogWeightDictList,
             float(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]))
+        corr, std = calculateCorrelation(cogDist, taxDist)
+        print("CORRELATION: %f STD: %f" % (corr, std))
+        print("\nStoring COG distance dictionary...")
+        UtilStore(cogDist, COG_DIST_DICT())
+        sys.exit(0)
+
+    if (len(sys.argv) == 2) and (sys.argv[1] == "optimalStore"):
+        cogDist = buildCogDistances(cogDict, cogWeightDictList,
+            **CogDistOptimalParams)
         corr, std = calculateCorrelation(cogDist, taxDist)
         print("CORRELATION: %f STD: %f" % (corr, std))
         print("\nStoring COG distance dictionary...")

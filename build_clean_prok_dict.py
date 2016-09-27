@@ -16,7 +16,7 @@ for d,pg in masterDict.iteritems():
     if len(sn) == 1:
         cleanDict[d] = pg.getStrain(sn[0])
     else:
-        print("%d strains in %s" % (len(sn), d))
+        print("%d strains in %s: %s" % (len(sn), d, repr(sn)))
 
 UtilStore(cleanDict, PROK_CLEAN_GENOME_DICT())
 

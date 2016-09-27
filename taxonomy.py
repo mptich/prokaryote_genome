@@ -24,6 +24,9 @@ class TaxonomyParser(UtilObject):
         # The main result: map of ProkDnaSet keys to Taxa's
         self.taxaDict = {}
 
+        # Official name to dir dictionary
+        self.officialNameDirDict = {}
+
         # Manual match count
         self.manualMatchCount = 0
 
@@ -42,6 +45,7 @@ class TaxonomyParser(UtilObject):
 
         for dir, taxaName in manualMatchDict.iteritems():
             self.taxaDict[dir] = self.taxaNamesDict[taxaName]
+            self.officialNameDirDict[taxaName] = dir
             del self.taxaNamesDict[taxaName]
             self.manualMatchCount += 1
 
@@ -60,9 +64,9 @@ class TaxonomyParser(UtilObject):
 
     def process(self):
         # We will match organisms by the best name match
-        for orgName, taxa in self.taxaNamesDict.items():
+        for officialName, taxa in self.taxaNamesDict.items():
             # Remove strain if it is present
-            orgName = ProkDna.removeStrain(orgName)
+            orgName = ProkDna.removeStrain(officialName)
             termList = [x for x in orgName.split(' ') if x != ""]
             # If the last term looks like a chromosome number - remove it
             if termList and \
@@ -95,9 +99,11 @@ class TaxonomyParser(UtilObject):
                 for d in shortestNameDictList:
                     prokDnaSet = self.nameDict[d["name"]]
                     self.taxaDict[prokDnaSet.dir] = taxa
+                    self.officialNameDirDict[officialName] = prokDnaSet.dir
 
         # Dump taxa dixionary and unmatched Taxa organism names
         UtilStore(self.taxaDict, PROK_TAXA_DICT())
+        UtilStore(self.officialNameDirDict, NAME_DIR_DICT())
         UtilStore(self.unmatchedSet, UNMATCHED_TAXA_SET())
         # Dump procDna directories that has not matched anything in taxonomy
         prokDnaDirSet = set([x.dir for x in self.nameDict.values()])

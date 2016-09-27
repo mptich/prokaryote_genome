@@ -14,8 +14,8 @@ import operator
 import math
 import itertools
 
-CutOffDiff = 1.0
-CutOffBestFit = 3.0
+CutOffDiff = 0.
+CutOffBestFit = 0.00001 # To account for rounding errors
 
 
 _, _, taxaDict, _ = \
@@ -91,14 +91,15 @@ UtilDrawHistogram(show = True)
 print globStdList
 
 bestFitHistogram = []
-reclassList = []
+reclassTextList = []
+reclassObjList = []
 print("RECLASSIFICATIONS...")
 for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
     typeOrig = taxa.type
     distObjAnc = taxaTypeAncDistDict[dir]
     taxaTypeToObj = taxaTypeDistDict[dir]
 
-    bestFit = 0.0
+    bestFit = -1.0
     bestFitType = None
     bestFitComparedTaxons = None
     for taxaOther in taxaDict.values():
@@ -142,7 +143,8 @@ for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
 
     print("\r%u. %s bestFit %f" % (ind, dir, bestFit)),
     bestFitHistogram.append(bestFit)
-    if bestFit >= CutOffBestFit:
+    if bestFit > CutOffBestFit:
+
         s = ("\n%s\nOriginal: %s\nReclassified: %s\nTaxonomy distance: %d" +\
             "\nSigmas: %f\nCompared taxons: %s\nSigmas per compare: %f\n")%\
             (dir, repr(typeOrig), repr(bestFitType),
@@ -151,11 +153,19 @@ for ind, (dir, taxa) in enumerate(taxaDict.iteritems(), start=1):
             bestFitComparedTaxons]),
             bestFit/len(bestFitComparedTaxons))
         print s
-        reclassList.append((bestFit, s))
+        reclassTextList.append((bestFit, s))
+
+        reclassObjList.append(UtilObject(dir=dir, orig=typeOrig, bestFit= \
+            bestFitType, taxDist=typeOrig.distance(bestFitType), \
+            comparedTaxons=bestFitComparedTaxons, sigmas=bestFit, \
+            sigmPerComp=bestFit/len(bestFitComparedTaxons)))
 
 UtilDrawHistogram(bestFitHistogram, show=True)
 
-reclassList = sorted(reclassList, reverse = True)
+UtilStore(sorted(reclassObjList, key = lambda x: x.bestFit, reverse=True),
+    RECLASSIFIED_DIR_LIST())
+
+reclassList = sorted(reclassTextList, reverse = True)
 
 with open(config.WORK_FILES_DIR() + "Reclassify.txt", "w") as f:
     for t in reclassList:
