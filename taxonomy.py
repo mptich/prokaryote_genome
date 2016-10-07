@@ -66,12 +66,9 @@ class TaxonomyParser(UtilObject):
         # We will match organisms by the best name match
         for officialName, taxa in self.taxaNamesDict.items():
             # Remove strain if it is present
-            orgName = ProkDna.removeStrain(officialName)
+            nameParser = ProkDnaNameParser(officialName)
+            orgName = nameParser.name
             termList = [x for x in orgName.split(' ') if x != ""]
-            # If the last term looks like a chromosome number - remove it
-            if termList and \
-                    (ProkDna.chromosomeStrToNumber(termList[-1]) != -1):
-                termList = termList[:-1]
             if len(termList) < 2:
                 print("Taxonomy: organism name %s is too short" % orgName)
                 continue

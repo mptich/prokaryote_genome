@@ -4,6 +4,7 @@ import re
 import numpy
 import os
 from shared.pyutils.utils import *
+from shared.pyutils.bioutils import *
 
 class ProkDna(UtilObject):
     """
@@ -20,80 +21,6 @@ class ProkDna(UtilObject):
     isClone - bool, indicating if this is some kind of clone
     """
 
-    # Legitimate chromosome representation (might have no name)
-    patChromosome = re.compile(r'(.*)(\bchromosome\b(?:\s+([^\s,]+))?)(.*)')
-    chromosomeXlator = {"i":"1", "ii":"2", "iii":"3"}
-    validChromosomes = ["1", "2", "3"]
-
-    # Phage representation (might have no name)
-    patPhage = re.compile(r'(.*)(\bphage\b(?:\s+([^\s,]+))?)(.*)')
-
-    # Strain representation (must have name)
-    patStrain1 = re.compile(r'(.*)(\bstr\b\.\s+([^\s,]+))(.*)')
-    patStrain2 = re.compile(r'(.*)(\bstrain\b\s+([^\s,]+))(.*)')
-
-    # Plasmid and megaplasmid patterns (might have no name)
-    patPlasmid = re.compile(r'(.*)(\b(?:mega)?plasmid\b(?:\s+([^\s,]+))?)(.*)')
-
-    # Clone match
-    patClone = re.compile(r'.*\bclone\b.*')
-
-    patWhiteSpace = re.compile(r'\s+')
-    patWhiteSpaceComma = re.compile(r'\s+,')
-    patQuotedText = re.compile(r'([\'\"](.*?)[\'\"])')
-    # "complete chromsome" needs to be removed, otherwise it consumes
-    # the next word as the name of this chromosome
-    patCompleteChromosome = re.compile(r'complete chromosome ')
-
-    def xlateChromosomeStr(self):
-        # Translates chromosome string if needed
-        if self.chr in ProkDna.chromosomeXlator:
-            self.chr = ProkDna.chromosomeXlator[self.chr]
-
-    @staticmethod
-    def chromosomeStrToNumber(chr):
-        # Returns -1 if this is not a valid chromosome number string
-        if chr in ProkDna.chromosomeXlator:
-            chr = ProkDna.chromosomeXlator[chr]
-        if chr in ProkDna.validChromosomes:
-            return int(chr)
-        else:
-            return -1
-
-    @staticmethod
-    def removeQuotes(s):
-        miter = ProkDna.patQuotedText.finditer(s)
-        # Accumulated shift, because replacement string might be of
-        # different length
-        shift = 0
-        for m in miter:
-            startPos = m.start(1) + shift
-            endPos = m.end(1) + shift
-            replStr = m.group(2)
-            replStr = ProkDna.patWhiteSpace.sub('_', replStr)
-            shift += len(replStr) + startPos - endPos
-            s = s[:startPos] + replStr + s[endPos:]
-        return s
-
-    @staticmethod
-    def processPattern(name, pattern, default = None):
-        # Extracts matched feature, and returns updated DNA name
-        # excluding the pattern, and teh feature value (or default)
-        m = pattern.match(name)
-        if not m:
-            return (name, default)
-        featureName = m.group(3)
-        if not featureName:
-            featureName = "NONAME"
-        # Exclude the found feature from the name, and trim white space
-        name = ProkDna.patWhiteSpace.sub(' ', m.group(1) + m.group(4))
-        return (ProkDna.patWhiteSpaceComma.sub(',', name), featureName)
-
-    @staticmethod
-    def removeStrain(name):
-        name, _ = ProkDna.processPattern(name, ProkDna.patStrain1)
-        name, _ = ProkDna.processPattern(name, ProkDna.patStrain2)
-        return name
 
     def __init__(self, **kwargs):
         if self.buildFromDict(kwargs):
@@ -104,53 +31,23 @@ class ProkDna(UtilObject):
         with open(self.fullPttName, 'r') as f:
             # Take the first line
             for l in f:
-                # Get DNA name
-                self._name = ProkDna.removeQuotes(l.strip().lower())
-                self._name = ProkDna.patWhiteSpace.sub(' ', self._name)
-                self._name = ProkDna.patCompleteChromosome.sub('', self._name)
+                nameParser = ProkDnaNameParser(l)
+                # Take just the first line
                 break
 
-        self.chr = None
-        self.strain = None
-        self.isClone = False
-        self.phage = None
-        self.plasmid = None
-
-        if ProkDna.patClone.match(self._name):
-            self.isClone = True
-            return
-
-        self._name, self.phage = self.processPattern(self._name,
-                                                    ProkDna.patPhage, None)
-        self._name, self.plasmid = self.processPattern(self._name,
-                                                  ProkDna.patPlasmid, None)
-        if self.plasmid or self.phage:
-            return
-
-        self._name, self.chr = self.processPattern(self._name,
-                                               ProkDna.patChromosome, "1")
-        self.xlateChromosomeStr()
-        # Some names have an extra chromosome string, remove it
-        self._name, _ = self.processPattern(self._name, ProkDna.patChromosome,
-                                           None)
-
-        defaultStrainName = "MAIN"
-        self._name, self.strain = self.processPattern(self._name,
-                                                    ProkDna.patStrain1,
-                                                    defaultStrainName)
-        if self.strain == defaultStrainName:
-            # Try another pattern
-            self._name, self.strain = self.processPattern(self._name,
-                                                        ProkDna.patStrain2,
-                                                        defaultStrainName)
-
-        # Leave only the name up to the comma
-        self._name = ProkDna.patWhiteSpaceComma.sub(',', self._name)
-        self._name = self._name.split(',', 1)[0]
-
+        self.chr = nameParser.chr
+        self.strain = nameParser.strain
+        self.isClone = nameParser.isClone
+        self.isElement = nameParser.isElement
+        self.phage = nameParser.phage
+        self.plasmid = nameParser.plasmid
+        self._name = nameParser.name
 
     def getPtt(self):
         return self.ptt
+
+    def isAuxiliary(self):
+        return (self.isClone or self.isElement or self.phage or self.plasmid)
 
     def getPttBase(self):
         return self.ptt.rpartition('.')[0]

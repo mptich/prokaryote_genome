@@ -19,6 +19,8 @@ def newProkGenome(dir):
     pttFiles = glob.glob(fullDir + "*.ptt")
     for pttFileName in pttFiles:
         prokDna = ProkDna(fullPttName = pttFileName)
+        if prokDna.isAuxiliary():
+            continue
         prokDnaDict[prokDna.key] = prokDna
         prokGenome.add(prokDna)
     prokGenome.verify()

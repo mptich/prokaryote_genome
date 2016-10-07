@@ -101,7 +101,8 @@ def commonCogsDistReg(dir1, dir2, cogDict, cogWeightDict, expGenReg, mixReg):
         (ExpMaxRegDist * commonSetWeight + setWeight))
 
 
-def buildCogTaxaDict(noWeights = False, showCogFreqHist = False):
+def buildCogTaxaDict(noWeights = False, showCogFreqHist = False,
+    interpolationRange = None):
 
     print("reading taxa dictionary...")
     taxaDict = UtilLoad(PROK_TAXA_DICT())
@@ -149,7 +150,9 @@ def buildCogTaxaDict(noWeights = False, showCogFreqHist = False):
         print("Building cogWeightsDict...")
         cogWeightDictList = [DefDict(dict) for i \
             in range(0, COG_REG_STEP_COUNT+1)]
-        for i in range(0, COG_REG_STEP_COUNT+1):
+        if not interpolationRange:
+            interpolationRange = range(0, COG_REG_STEP_COUNT+1)
+        for i in interpolationRange:
             expCogReg = math.exp(COG_REG_LOWER + float(i) * COG_REG_STEP)
             print("\nexpCogReg %f" % expCogReg)
             cogWeightDict = cogWeightDictList[i]
@@ -164,14 +167,20 @@ def buildCogTaxaDict(noWeights = False, showCogFreqHist = False):
     return (cogDict, cogWeightDictList, taxaDict, taxDist)
 
 
-def buildCogDistances(cogDict, cogWeightDictList, cogReg, genReg, mixReg):
-
-    expGenReg = math.exp(genReg)
-
+def calculateCogRegInt(cogReg):
     cogRegInt = int((cogReg - COG_REG_LOWER) / COG_REG_STEP)
     assert(cogRegInt <= COG_REG_STEP_COUNT)
     if cogRegInt == COG_REG_STEP_COUNT:
         cogRegInt = COG_REG_STEP_COUNT-1
+    return cogRegInt
+
+
+def buildCogDistances(cogDict, cogWeightDictList, cogReg, genReg, mixReg):
+
+    expGenReg = math.exp(genReg)
+
+    cogRegInt = calculateCogRegInt(cogReg)
+
     expCogReg = math.exp(cogReg)
     fraction = (expCogReg - CogRegExpSteps[cogRegInt]) / \
         (CogRegExpSteps[cogRegInt+1] - CogRegExpSteps[cogRegInt])
@@ -271,19 +280,23 @@ if __name__ == "__main__":
     distCounts - buils taxonomy distance dictionaries
     """
 
-    cogDict, cogWeightDictList, taxaDict, taxDist = buildCogTaxaDict()
-
     if (len(sys.argv) == 2) and (sys.argv[1] == "buildWeights"):
+        cogDict, cogWeightDictList, taxaDict, taxDist = buildCogTaxaDict()
         # Done
         sys.exit(0)
 
     if (len(sys.argv) == 2) and (sys.argv[1] == "optimize"):
+        cogDict, cogWeightDictList, taxaDict, taxDist = buildCogTaxaDict()
         findOptimum(cogDict, cogWeightDictList, taxDist)
         sys.exit(0)
 
     if (len(sys.argv) == 5) and (sys.argv[1] == "store"):
+        cogReg = float(sys.argv[2])
+        cogRegInt = calculateCogRegInt(cogReg)
+        cogDict, cogWeightDictList, taxaDict, taxDist = \
+            buildCogTaxaDict(interpolationRange=range(cogRegInt, cogRegInt+2))
         cogDist = buildCogDistances(cogDict, cogWeightDictList,
-            float(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4]))
+            cogReg, float(sys.argv[3]), float(sys.argv[4]))
         corr, std = calculateCorrelation(cogDist, taxDist)
         print("CORRELATION: %f STD: %f" % (corr, std))
         print("\nStoring COG distance dictionary...")
@@ -291,6 +304,10 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if (len(sys.argv) == 2) and (sys.argv[1] == "optimalStore"):
+        cogReg = CogDistOptimalParams["cogReg"]
+        cogRegInt = calculateCogRegInt(cogReg)
+        cogDict, cogWeightDictList, taxaDict, taxDist = \
+            buildCogTaxaDict(interpolationRange=range(cogRegInt, cogRegInt+2))
         cogDist = buildCogDistances(cogDict, cogWeightDictList,
             **CogDistOptimalParams)
         corr, std = calculateCorrelation(cogDist, taxDist)
@@ -301,6 +318,8 @@ if __name__ == "__main__":
 
     if (len(sys.argv) == 2) and (sys.argv[1] == "distCounts"):
         print("Building dict of taxonomy dist counts...")
+        _, _, taxaDict, taxDist = \
+            buildCogTaxaDict(noWeights = True)
         genTaxDistCntDict = DefDict(lambda: [0] *
             (TaxaType.maxDistance() + 1))
         for dir, tdd in taxDist.items():
